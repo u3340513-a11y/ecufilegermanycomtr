@@ -7,7 +7,6 @@ namespace App\Controllers\Admin;
 use Core\Controller;
 use Core\Database;
 use Core\Request;
-use Core\View;
 
 class LandingContentController extends Controller
 {
@@ -40,10 +39,12 @@ class LandingContentController extends Controller
             $sections[$row['section']][] = $row;
         }
 
-        View::render('admin/landing/index', [
+        $this->view('admin/landing/index', [
+            'pageTitle'     => 'Landing Page Editor',
+            'currentPage'   => 'admin-landing',
             'sections'      => $sections,
             'sectionLabels' => $this->sectionLabels,
-        ]);
+        ], 'admin');
     }
 
     public function save(): void

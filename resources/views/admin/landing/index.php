@@ -1,4 +1,4 @@
-<?php $pageTitle = 'Landing Page Editor'; $currentPage = 'admin-landing'; ?>
+<?php $pageTitle = $pageTitle ?? 'Landing Page Editor'; $currentPage = $currentPage ?? 'admin-landing'; ?>
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
@@ -22,6 +22,8 @@
     </div>
     <?php unset($_SESSION['flash_success']); ?>
 <?php endif; ?>
+
+<?= \Core\View::alert() ?>
 
 <form method="POST" action="/admin/landing/save" id="landingForm">
     <?= \Core\View::csrf() ?>
@@ -209,7 +211,7 @@ document.querySelectorAll('.lp-dropzone').forEach(dz => {
         fd.append('image', file);
         fd.append('section', section);
         fd.append('key_name', key);
-        fd.append('_token', document.querySelector('[name="_token"]').value);
+        fd.append('_csrf_token', document.querySelector('[name="_csrf_token"]').value);
 
         loading.classList.remove('d-none');
 
