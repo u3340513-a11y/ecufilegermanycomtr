@@ -50,7 +50,7 @@ class LandingContentController extends Controller
 
     public function save(): void
     {
-        $fields = Request::post('fields', []);
+        $fields = $_POST['fields'] ?? [];
         if (empty($fields) || !is_array($fields)) {
             $_SESSION['flash_error'] = 'No data received.';
             header('Location: /admin/landing');
@@ -76,8 +76,8 @@ class LandingContentController extends Controller
     {
         header('Content-Type: application/json');
 
-        $section = Request::post('section', '');
-        $keyName = Request::post('key_name', '');
+        $section = $_POST['section'] ?? '';
+        $keyName = $_POST['key_name'] ?? '';
 
         if (empty($section) || empty($keyName)) {
             echo json_encode(['success' => false, 'message' => 'Invalid parameters.']);
