@@ -4,6 +4,10 @@
 
     RewriteRule ^(app|config|core|database|storage|vendor|resources)(/|$) - [F,L]
 
+    RewriteRule ^\.env$ - [F,L]
+    RewriteRule ^\.git(/|$) - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
@@ -14,7 +18,19 @@
     Header set X-Frame-Options "SAMEORIGIN"
     Header set X-XSS-Protection "1; mode=block"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always unset X-Powered-By
+    Header always unset Server
 </IfModule>
+
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "\.(sql|log|bak|env|json|lock|md|yml|yaml|sh|git)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
 
 <IfModule mod_php.c>
     php_value upload_max_filesize 25M
