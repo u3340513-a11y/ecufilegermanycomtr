@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `users` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `email` VARCHAR(191) NOT NULL,
+    `password` VARCHAR(255) NOT NULL,
+    `phone` VARCHAR(20) DEFAULT NULL,
+    `company` VARCHAR(150) DEFAULT NULL,
+    `avatar` VARCHAR(255) DEFAULT NULL,
+    `credit_balance` INT NOT NULL DEFAULT 0,
+    `role` ENUM('user','admin') NOT NULL DEFAULT 'user',
+    `email_token` VARCHAR(64) DEFAULT NULL,
+    `email_verified` TINYINT(1) NOT NULL DEFAULT 0,
+    `reset_token` VARCHAR(64) DEFAULT NULL,
+    `reset_expires` DATETIME DEFAULT NULL,
+    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_users_email` (`email`),
+    INDEX `idx_users_role` (`role`),
+    INDEX `idx_users_reset_token` (`reset_token`),
+    INDEX `idx_users_email_token` (`email_token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

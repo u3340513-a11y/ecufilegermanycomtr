@@ -1,0 +1,125 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controllers\User;
+
+use Core\Controller;
+use Core\Request;
+use Core\Database;
+use App\Services\RequestService;
+use App\Repositories\MessageRepository;
+
+final class RequestController extends Controller
+{
+    private RequestService $service;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->service = new RequestService();
+    }
+
+    public function index(Request $request): void
+    {
+        $page = (int) ($request->get('page') ?: 1);
+        $result = $this->service->getUserRequests($this->userId(), $page);
+
+        $this->view('user/requests/index', [
+            'pageTitle'   => 'Taleplerim',
+            'currentPage' => 'requests',
+            'requests'    => $result['data'],
+            'total'       => $result['total'],
+            'page'        => $result['page'],
+            'totalPages'  => $result['totalPages'],
+        ]);
+    }
+
+    public function create(Request $request): void
+    {
+        $db = Database::getInstance();
+        $brands = $db->fetchAll('SELECT * FROM brands WHERE is_active = 1 ORDER BY sort_order ASC, name ASC');
+        $readingMethods = $db->fetchAll('SELECT * FROM reading_methods WHERE is_active = 1 ORDER BY name ASC');
+        $transmissionTypes = $db->fetchAll('SELECT * FROM transmission_types WHERE is_active = 1 ORDER BY sort_order ASC');
+        $stages = $db->fetchAll('SELECT * FROM stages WHERE is_active = 1 ORDER BY sort_order ASC');
+        $creditBalance = $db->fetch('SELECT credit_balance FROM users WHERE id = ?', [$this->userId()])['credit_balance'] ?? 0;
+
+        $this->view('user/requests/create', [
+            'pageTitle'          => 'Yeni Talep',
+            'currentPage'        => 'create-request',
+            'brands'             => $brands,
+            'readingMethods'     => $readingMethods,
+            'transmissionTypes'  => $transmissionTypes,
+            'stages'             => $stages,
+            'creditBalance'      => $creditBalance,
+        ]);
+    }
+
+    public function store(Request $request): void
+    {
+        $stageId = (int) $request->post('stage_id');
+        if (!$stageId) {
+            $this->withError('Lütfen bir işlem tipi (stage) seçin.', '/dashboard/requests/create');
+        }
+
+        $serviceIds = $request->post('services');
+        if (!is_array($serviceIds)) {
+            $serviceIds = [];
+        }
+
+        try {
+            $requestId = $this->service->create(
+                $this->userId(),
+                $request->only([
+                    'brand_id', 'model_id', 'generation_id', 'engine_id',
+                    'ecu_id', 'transmission_type_id', 'year', 'ecu_sw', 'ecu_hw',
+                    'reading_method_id', 'plate_number', 'customer_note'
+                ]),
+                $serviceIds,
+                $stageId
+            );
+
+            $uploadedFiles = \Core\Session::get('uploaded_files', []);
+            if (!empty($uploadedFiles)) {
+                \Core\Session::remove('uploaded_files');
+                $fileRepo = new \App\Repositories\FileRepository();
+                foreach ($uploadedFiles as $file) {
+                    $fileRepo->create([
+                        'request_id'    => $requestId,
+                        'user_id'       => $this->userId(),
+                        'filename'      => $file['filename'],
+                        'original_name' => $file['original_name'],
+                        'path'          => $file['path'],
+                        'size'          => $file['size'],
+                        'mime_type'     => $file['mime_type'],
+                        'type'          => 'original',
+                        'version'       => 1,
+                    ]);
+                }
+            }
+
+            $this->withSuccess('Talep başarıyla oluşturuldu.', '/dashboard/requests/' . $requestId);
+        } catch (\RuntimeException $e) {
+            $this->withError($e->getMessage(), '/dashboard/requests/create');
+        }
+    }
+
+    public function show(Request $request, string $id): void
+    {
+        $detail = $this->service->getRequestDetail((int) $id);
+        if (!$detail || (int) $detail['user_id'] !== $this->userId()) {
+            $this->redirect('/dashboard/requests');
+        }
+
+        $msgRepo = new MessageRepository();
+        $messages = $msgRepo->getByRequest((int) $id);
+        $msgRepo->markAsRead((int) $id, $this->userId());
+
+        $this->view('user/requests/show', [
+            'pageTitle'   => 'Talep #' . $detail['ticket_no'],
+            'currentPage' => 'requests',
+            'req'         => $detail,
+            'messages'    => $messages,
+        ]);
+    }
+}
