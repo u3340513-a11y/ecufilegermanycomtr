@@ -2,7 +2,7 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/ecufilegermanyco/public_html
-    - /bin/cp -r . $DEPLOYPATH
+    - rsync -a --exclude='.git' --exclude='.env' --exclude='*.zip' . $DEPLOYPATH/
     - /bin/cp /home/ecufilegermanyco/.env $DEPLOYPATH/.env 2>/dev/null || true
     - find $DEPLOYPATH/storage -type d -exec chmod 775 {} \; 2>/dev/null || true
     - find $DEPLOYPATH/storage -type f -exec chmod 664 {} \; 2>/dev/null || true
