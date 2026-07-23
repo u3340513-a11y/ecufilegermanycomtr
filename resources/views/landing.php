@@ -228,50 +228,42 @@ $showcaseImgs = [
     </div>
 </section>
 
+<?php
+$br = $lp['branches'] ?? [];
+
+$branchGroups = [
+    ['label' => $br['germany_label'] ?? 'Germany', 'cities' => $br['germany_cities'] ?? 'Bielefeld, Duisburg, Stuttgart, München, Köln'],
+    ['label' => $br['belgium_label'] ?? 'Belgium', 'cities' => $br['belgium_cities'] ?? 'Evergem, Aarschot'],
+    ['label' => $br['sweden_label']  ?? 'Sweden',  'cities' => $br['sweden_cities']  ?? 'Sweden'],
+    ['label' => $br['turkey_label']  ?? 'Turkey',  'cities' => $br['turkey_cities']  ?? 'Konya, Gaziantep, Adana, Nigde, Sirnak, Samsun, Batman'],
+];
+?>
 <!-- BRANCHES -->
 <section class="lp-section" id="branches">
     <div class="lp-container">
         <div class="lp-section__header">
-            <span class="lp-section__eyebrow">Our Locations</span>
-            <h2 class="lp-section__title">Our Branches</h2>
-            <p class="lp-section__sub">15 locations across Europe and Turkey — always close to you.</p>
+            <span class="lp-section__eyebrow"><?= lp($lp, 'branches', 'eyebrow', 'Our Locations') ?></span>
+            <h2 class="lp-section__title"><?= lp($lp, 'branches', 'title', 'Our Branches') ?></h2>
+            <p class="lp-section__sub"><?= lp($lp, 'branches', 'subtitle', '15 locations across Europe and Turkey — always close to you.') ?></p>
         </div>
         <div class="lp-branches">
+            <?php foreach ($branchGroups as $group):
+                $cities = array_filter(array_map('trim', explode(',', $group['cities'])));
+                $count  = count($cities);
+            ?>
             <div class="lp-branch-group">
-                <div class="lp-branch-group__header"><i class="fas fa-flag"></i><span>Germany</span><span class="lp-branch-group__count">5 branches</span></div>
+                <div class="lp-branch-group__header">
+                    <i class="fas fa-flag"></i>
+                    <span><?= htmlspecialchars($group['label'], ENT_QUOTES) ?></span>
+                    <span class="lp-branch-group__count"><?= $count ?> <?= $count === 1 ? 'branch' : 'branches' ?></span>
+                </div>
                 <ul class="lp-branch-list">
-                    <li><i class="fas fa-map-marker-alt"></i> Bielefeld</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Duisburg</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Stuttgart</li>
-                    <li><i class="fas fa-map-marker-alt"></i> München</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Köln</li>
+                    <?php foreach ($cities as $city): ?>
+                        <li><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($city, ENT_QUOTES) ?></li>
+                    <?php endforeach; ?>
                 </ul>
             </div>
-            <div class="lp-branch-group">
-                <div class="lp-branch-group__header"><i class="fas fa-flag"></i><span>Belgium</span><span class="lp-branch-group__count">2 branches</span></div>
-                <ul class="lp-branch-list">
-                    <li><i class="fas fa-map-marker-alt"></i> Evergem</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Aarschot</li>
-                </ul>
-            </div>
-            <div class="lp-branch-group">
-                <div class="lp-branch-group__header"><i class="fas fa-flag"></i><span>Sweden</span><span class="lp-branch-group__count">1 branch</span></div>
-                <ul class="lp-branch-list">
-                    <li><i class="fas fa-map-marker-alt"></i> Sweden</li>
-                </ul>
-            </div>
-            <div class="lp-branch-group">
-                <div class="lp-branch-group__header"><i class="fas fa-flag"></i><span>Turkey</span><span class="lp-branch-group__count">7 branches</span></div>
-                <ul class="lp-branch-list">
-                    <li><i class="fas fa-map-marker-alt"></i> Konya</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Gaziantep</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Adana</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Nigde</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Sirnak</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Samsun</li>
-                    <li><i class="fas fa-map-marker-alt"></i> Batman</li>
-                </ul>
-            </div>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>

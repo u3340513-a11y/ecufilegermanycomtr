@@ -18,6 +18,7 @@ class LandingContentController extends Controller
         'how_it_works' => 'How It Works',
         'showcase'     => 'Car Showcase (Images)',
         'about'        => 'About Us',
+        'branches'     => 'Our Branches',
         'cta'          => 'Call To Action',
         'footer'       => 'Footer',
     ];

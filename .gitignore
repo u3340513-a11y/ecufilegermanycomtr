@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+*.zip
 /node_modules/
 /storage/logs/*.log
 /storage/framework/cache/*
