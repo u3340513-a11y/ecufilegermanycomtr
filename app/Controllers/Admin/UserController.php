@@ -106,10 +106,12 @@ final class UserController extends Controller
 
         $db = \Core\Database::getInstance();
 
-        $db->query('DELETE rm FROM request_messages rm INNER JOIN requests r ON rm.request_id = r.id WHERE r.user_id = ?', [$userId]);
-        $db->query('DELETE rf FROM request_files rf INNER JOIN requests r ON rf.request_id = r.id WHERE r.user_id = ?', [$userId]);
+        $db->query('DELETE m FROM messages m INNER JOIN requests r ON m.request_id = r.id WHERE r.user_id = ?', [$userId]);
+        $db->query('DELETE f FROM files f INNER JOIN requests r ON f.request_id = r.id WHERE r.user_id = ?', [$userId]);
+        $db->query('DELETE FROM request_services WHERE request_id IN (SELECT id FROM requests WHERE user_id = ?)', [$userId]);
         $db->query('DELETE FROM requests WHERE user_id = ?', [$userId]);
         $db->query('DELETE FROM credit_transactions WHERE user_id = ?', [$userId]);
+        $db->query('DELETE FROM payment_links WHERE user_id = ?', [$userId]);
         $db->query('DELETE FROM activity_logs WHERE user_id = ?', [$userId]);
         $db->query('DELETE FROM notifications WHERE user_id = ?', [$userId]);
         $db->query('DELETE FROM users WHERE id = ?', [$userId]);
