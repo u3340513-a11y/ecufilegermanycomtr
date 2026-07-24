@@ -2,7 +2,17 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/ecufilegermanyco/public_html
-    - rsync -a --exclude='.git' --exclude='.env' --exclude='*.zip' . $DEPLOYPATH/
+    - /bin/cp -rf app $DEPLOYPATH/
+    - /bin/cp -rf assets $DEPLOYPATH/
+    - /bin/cp -rf config $DEPLOYPATH/
+    - /bin/cp -rf core $DEPLOYPATH/
+    - /bin/cp -rf database $DEPLOYPATH/
+    - /bin/cp -rf resources $DEPLOYPATH/
+    - /bin/cp -f index.php $DEPLOYPATH/index.php
+    - /bin/cp -f .htaccess $DEPLOYPATH/.htaccess
+    - /bin/cp -f composer.json $DEPLOYPATH/composer.json
+    - /bin/cp -f .env.example $DEPLOYPATH/.env.example 2>/dev/null || true
+    - test -d $DEPLOYPATH/vendor || /bin/cp -rf vendor $DEPLOYPATH/
     - /bin/cp /home/ecufilegermanyco/.env $DEPLOYPATH/.env 2>/dev/null || true
     - find $DEPLOYPATH/storage -type d -exec chmod 775 {} \; 2>/dev/null || true
     - find $DEPLOYPATH/storage -type f -exec chmod 664 {} \; 2>/dev/null || true
