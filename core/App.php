@@ -173,6 +173,8 @@ final class App
 
     public static function asset(string $path): string
     {
-        return self::url('assets/' . ltrim($path, '/'));
+        $filePath = ROOT_PATH . '/assets/' . ltrim($path, '/');
+        $version  = file_exists($filePath) ? filemtime($filePath) : time();
+        return self::url('assets/' . ltrim($path, '/')) . '?v=' . $version;
     }
 }

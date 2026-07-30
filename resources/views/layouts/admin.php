@@ -14,7 +14,7 @@
 <body class="app-body admin-body">
     <?php \Core\View::partial('admin-sidebar') ?>
     <div class="app-main">
-        <?php \Core\View::partial('header') ?>
+        <?php \Core\View::partial('admin-header') ?>
         <div class="app-content">
             <?= \Core\View::alert() ?>
             <?= $content ?>
