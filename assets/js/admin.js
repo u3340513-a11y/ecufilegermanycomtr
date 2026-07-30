@@ -21,18 +21,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ─── Toggle Password visibility ──────────────────────────────────────────
+    // ─── Toggle Password ─────────────────────────────────────────────────────
     document.querySelectorAll('.toggle-password').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var target = document.getElementById(btn.dataset.target);
             if (!target) return;
             var icon = btn.querySelector('i');
-            if (target.type === 'password') {
-                target.type = 'text';
-                if (icon) { icon.classList.replace('fa-eye', 'fa-eye-slash'); }
-            } else {
-                target.type = 'password';
-                if (icon) { icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+            target.type = target.type === 'password' ? 'text' : 'password';
+            if (icon) {
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
             }
         });
     });
@@ -53,20 +51,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Admin Notification System
-    // Polls /admin/notifications/unread-count every 5 seconds.
-    // Loads the 15 most recent notifications into the header dropdown on demand.
-    // When the unread count increases → plays bell + shows toast + reloads page.
-    // ═══════════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    // ADMIN NOTIFICATION SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
 
     var lastKnownCount = null;
-    var POLL_MS        = 5000;  // 5-second polling
+    var POLL_MS        = 5000;
 
-    // ── Audio: two-tone bell chime synthesised via Web Audio API ─────────────
+    // ── AudioContext: must be created/resumed after a user gesture ───────────
+    // Browsers block AudioContext.resume() until user has interacted with page.
+    // We pre-warm it on the first click anywhere, so the bell works later.
+    var audioCtx = null;
+
+    function getAudioCtx() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) { return null; }
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(function () {});
+        }
+        return audioCtx;
+    }
+
+    // Pre-warm on first user click
+    document.addEventListener('click', function warmAudio() {
+        getAudioCtx();
+        document.removeEventListener('click', warmAudio);
+    }, { once: true });
+
     function playBellSound() {
+        var ctx = getAudioCtx();
+        if (!ctx) return;
         try {
-            var ctx = new (window.AudioContext || window.webkitAudioContext)();
             function tone(freq, delay, dur, vol) {
                 var osc  = ctx.createOscillator();
                 var gain = ctx.createGain();
@@ -85,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {}
     }
 
-    // ── Update the red-dot badge ─────────────────────────────────────────────
+    // ── Badge ────────────────────────────────────────────────────────────────
     function updateBadge(count) {
         var dot   = document.getElementById('headerNotifDot');
         var badge = document.getElementById('adminNotifBadge');
@@ -93,58 +111,70 @@ document.addEventListener('DOMContentLoaded', function () {
         if (badge) badge.textContent  = count > 0 ? String(count) : '';
     }
 
-    // ── HTML helpers ─────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
     function esc(str) {
         return String(str || '')
             .replace(/&/g,'&amp;').replace(/</g,'&lt;')
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
     function iconForType(type) {
-        return ({request:'fa-file-alt',message:'fa-comment',
-                 credit:'fa-coins',payment:'fa-credit-card'})[type] || 'fa-bell';
+        return ({
+            request: 'fa-file-alt', message: 'fa-comment',
+            credit:  'fa-coins',    payment: 'fa-credit-card'
+        })[type] || 'fa-bell';
     }
 
-    // ── Render notifications list into dropdown ──────────────────────────────
-    function renderNotifications(list, notifications) {
-        if (!list) return;
+    // ── Render notifications into #notificationList ───────────────────────────
+    function renderNotifications(notifications) {
+        var listEl = document.getElementById('notificationList');
+        if (!listEl) return;
+
         if (!notifications || notifications.length === 0) {
-            list.innerHTML = '<div class="text-center p-3 text-muted small">Bildirim yok</div>';
+            listEl.innerHTML = '<div class="text-center p-3 text-muted small">Bildirim yok</div>';
             return;
         }
+
         var html = '';
         notifications.forEach(function (n) {
             var unread = parseInt(n.is_read, 10) === 0;
             var link   = esc(n.link || '#');
-            html += '<a href="' + link + '" ' +
-                    'class="notification-item d-flex gap-2 align-items-start px-3 py-2' +
-                    (unread ? ' unread' : '') + '" data-notif-id="' + n.id + '" ' +
-                    'style="text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,.05);">' +
-                    '<div class="notification-type-icon flex-shrink-0 mt-1">' +
-                    '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i></div>' +
-                    '<div class="flex-grow-1 overflow-hidden">' +
-                    '<div class="small fw-semibold">' + esc(n.title) + '</div>' +
-                    '<div class="small text-muted" style="line-height:1.3;white-space:normal;">' + esc(n.content) + '</div>' +
-                    '</div></a>';
+            html +=
+                '<a href="' + link + '" ' +
+                'class="notification-item d-flex gap-2 align-items-start px-3 py-2' +
+                (unread ? ' unread' : '') + '" ' +
+                'data-notif-id="' + n.id + '" ' +
+                'style="text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,.06);">' +
+                '<div class="notification-type-icon flex-shrink-0 mt-1">' +
+                '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i>' +
+                '</div>' +
+                '<div class="flex-grow-1 overflow-hidden">' +
+                '<div class="small fw-semibold">' + esc(n.title) + '</div>' +
+                '<div class="small text-muted" style="line-height:1.3;white-space:normal;">' +
+                esc(n.content) + '</div>' +
+                '</div>' +
+                '</a>';
         });
-        list.innerHTML = html;
+        listEl.innerHTML = html;
 
-        // Mark individual item as read on click
-        list.querySelectorAll('[data-notif-id]').forEach(function (el) {
+        listEl.querySelectorAll('[data-notif-id]').forEach(function (el) {
             el.addEventListener('click', function () {
                 el.classList.remove('unread');
                 fetch('/admin/notifications/read/' + el.dataset.notifId, {
-                    method:'POST', credentials:'same-origin',
-                    headers:{'X-Requested-With':'XMLHttpRequest'}
-                }).catch(function(){});
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).catch(function () {});
             });
         });
     }
 
-    // ── Fetch and display recent notifications ────────────────────────────────
+    // ── Fetch and populate dropdown ───────────────────────────────────────────
     function loadDropdownNotifications() {
         var listEl = document.getElementById('notificationList');
-        if (!listEl) return;
-        listEl.innerHTML = '<div class="text-center p-3 text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Yükleniyor...</div>';
+        if (listEl) {
+            listEl.innerHTML =
+                '<div class="text-center p-3 text-muted small">' +
+                '<i class="fas fa-spinner fa-spin me-1"></i>Yükleniyor...</div>';
+        }
 
         fetch('/admin/notifications/recent', {
             credentials: 'same-origin',
@@ -153,17 +183,21 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
             if (data && data.success) {
-                renderNotifications(listEl, data.notifications);
-            } else {
-                listEl.innerHTML = '<div class="text-center p-3 text-muted small">Yüklenemedi</div>';
+                renderNotifications(data.notifications);
+            } else if (listEl) {
+                listEl.innerHTML =
+                    '<div class="text-center p-3 text-muted small">Yüklenemedi</div>';
             }
         })
         .catch(function () {
-            listEl.innerHTML = '<div class="text-center p-3 text-muted small">Bağlantı hatası</div>';
+            if (listEl) {
+                listEl.innerHTML =
+                    '<div class="text-center p-3 text-muted small">Bağlantı hatası</div>';
+            }
         });
     }
 
-    // ── Poll for new unread count ─────────────────────────────────────────────
+    // ── Poll unread count ─────────────────────────────────────────────────────
     function pollNotifications() {
         fetch('/admin/notifications/unread-count', {
             credentials: 'same-origin',
@@ -175,26 +209,23 @@ document.addEventListener('DOMContentLoaded', function () {
             var count = parseInt(data.count, 10);
 
             if (lastKnownCount === null) {
-                lastKnownCount = count; // Baseline on first poll
+                lastKnownCount = count; // Baseline — no alert on first load
             } else if (count > lastKnownCount) {
-                // New notification(s) arrived since last check
+                // New notification(s) since last poll
+                lastKnownCount = count;
                 playBellSound();
+                loadDropdownNotifications(); // Refresh dropdown immediately
 
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         toast: true, position: 'top-end', icon: 'info',
                         title: '🔔 Yeni bildiriminiz var!',
                         text: count + ' okunmamış bildirim',
-                        showConfirmButton: false, timer: 4000, timerProgressBar: true
-                    }).then(function () {
-                        // Reload page after toast so admin sees updated state
-                        window.location.reload();
-                    });
+                        showConfirmButton: false, timer: 5000, timerProgressBar: true
+                    }).then(function () { window.location.reload(); });
                 } else {
                     window.location.reload();
                 }
-
-                lastKnownCount = count;
             }
 
             updateBadge(count);
@@ -202,34 +233,30 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(function () {});
     }
 
-    // ── Attach dropdown open listeners (multiple strategies for reliability) ──
+    // ── Dropdown open: three strategies ──────────────────────────────────────
     var notifWrap = document.querySelector('.header-notification.dropdown');
     var notifBtn  = document.getElementById('notifDropdown');
 
-    // Strategy 1: Bootstrap 5 'show.bs.dropdown' on wrapper
     if (notifWrap) {
-        notifWrap.addEventListener('show.bs.dropdown', function () {
-            loadDropdownNotifications();
-        });
+        notifWrap.addEventListener('show.bs.dropdown', loadDropdownNotifications);
     }
-
-    // Strategy 2: Fallback — Bootstrap 'shown.bs.dropdown' on toggle button
     if (notifBtn) {
-        notifBtn.addEventListener('shown.bs.dropdown', function () {
-            loadDropdownNotifications();
-        });
-        // Strategy 3: Plain click as last resort (slight delay so dropdown is visible)
+        notifBtn.addEventListener('shown.bs.dropdown', loadDropdownNotifications);
         notifBtn.addEventListener('click', function () {
-            setTimeout(loadDropdownNotifications, 80);
+            setTimeout(loadDropdownNotifications, 100);
         });
     }
 
     // ── "Tümünü Okundu İşaretle" ─────────────────────────────────────────────
     var markAllRead = document.getElementById('markAllRead');
     if (markAllRead) {
-        markAllRead.addEventListener('click', function (e) {
+        // Clone to remove any duplicate listeners from app.js
+        var freshBtn = markAllRead.cloneNode(true);
+        markAllRead.parentNode.replaceChild(freshBtn, markAllRead);
+
+        freshBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            e.stopPropagation(); // Prevent Bootstrap closing dropdown
+            e.stopPropagation();
             fetch('/admin/notifications/read-all', {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -243,7 +270,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Kick off polling ──────────────────────────────────────────────────────
-    pollNotifications();                     // immediate first check
-    setInterval(pollNotifications, POLL_MS); // then every 5 seconds
+    // ── Pre-populate dropdown on page load so first click is instant ──────────
+    loadDropdownNotifications();
+
+    // ── Start polling ─────────────────────────────────────────────────────────
+    pollNotifications();
+    setInterval(pollNotifications, POLL_MS);
 });
