@@ -68,6 +68,24 @@ final class NotificationService
         );
     }
 
+    /**
+     * Notifies the user that credits were refunded due to a request cancellation.
+     *
+     * @param int    $userId   The user receiving the refund notification.
+     * @param int    $amount   Number of credits refunded.
+     * @param string $ticketNo Ticket number of the cancelled request.
+     */
+    public function notifyRefund(int $userId, int $amount, string $ticketNo): void
+    {
+        $this->create(
+            $userId,
+            'Kredi İadesi',
+            "#{$ticketNo} numaralı talebiniz iptal edildi. {$amount} kredi bakiyenize iade edildi.",
+            'credit',
+            '/dashboard/credits'
+        );
+    }
+
     public function notifyCreditAdded(int $userId, int $amount): void
     {
         $this->create(

@@ -145,14 +145,62 @@ final class RequestService
         return $request;
     }
 
+    /**
+     * Updates the status of a request and handles side-effects:
+     * - When transitioning to 'cancelled', automatically refunds the total_credits
+     *   back to the user if they haven't been refunded already (idempotent guard).
+     * - Wraps status update + refund in a transaction to ensure atomicity.
+     *
+     * @param int    $requestId Target request ID.
+     * @param string $status    New status value (must be a valid status string).
+     * @param int    $adminId   ID of the admin performing the action.
+     */
     public function updateStatus(int $requestId, string $status, int $adminId): void
     {
         $request = $this->requestRepo->findById($requestId);
-        if (!$request) return;
+        if (!$request) {
+            return;
+        }
 
-        $this->requestRepo->updateStatus($requestId, $status);
+        $previousStatus  = (string) $request['status'];
+        $totalCredits    = (int)   $request['total_credits'];
+        $userId          = (int)   $request['user_id'];
+        $isCancellation  = $status === 'cancelled';
+        $wasAlreadyCancelled = $previousStatus === 'cancelled';
 
-        $this->notifService->notifyRequestUpdate((int) $request['user_id'], $request['ticket_no'], $status);
+        // Determine whether a credit refund should be issued:
+        // Only refund when transitioning INTO cancelled for the first time and
+        // there are credits to return.
+        $shouldRefund = $isCancellation && !$wasAlreadyCancelled && $totalCredits > 0;
+
+        $db = Database::getInstance();
+        $db->beginTransaction();
+
+        try {
+            $this->requestRepo->updateStatus($requestId, $status);
+
+            if ($shouldRefund) {
+                $this->creditService->refund(
+                    $userId,
+                    $totalCredits,
+                    $requestId,
+                    $adminId
+                );
+            }
+
+            $db->commit();
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+
+        // Send notifications and mail outside the transaction
+        // (non-critical; failure here should not roll back the status change).
+        $this->notifService->notifyRequestUpdate($userId, $request['ticket_no'], $status);
+
+        if ($shouldRefund) {
+            $this->notifService->notifyRefund($userId, $totalCredits, $request['ticket_no']);
+        }
 
         $mailService = new MailService();
         $mailService->sendRequestNotification(
