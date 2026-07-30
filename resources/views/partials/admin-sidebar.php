@@ -1,8 +1,15 @@
+<?php
+    $adminPanelTitle = 'ECU Admin';
+    try {
+        $row = \Core\Database::getInstance()->fetch("SELECT value FROM settings WHERE key_name = 'admin_panel_title'");
+        if (!empty($row['value'])) { $adminPanelTitle = $row['value']; }
+    } catch (\Throwable) {}
+?>
 <aside class="sidebar admin-sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-logo">
             <i class="fas fa-microchip"></i>
-            <span>ECU Admin</span>
+            <span><?= \Core\View::escape($adminPanelTitle) ?></span>
         </div>
         <button class="sidebar-toggle d-lg-none" id="sidebarClose"><i class="fas fa-times"></i></button>
     </div>

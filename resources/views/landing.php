@@ -322,8 +322,9 @@ $branchGroups = [
         </div>
     </div>
     <div class="lp-footer__bottom">
-        <div class="lp-container">
-            &copy; <?= date('Y') ?> ECU File Germany. All rights reserved.
+        <div class="lp-container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span>&copy; <?= date('Y') ?> ECU File Germany. All rights reserved.</span>
+            <span style="font-size:.85rem;opacity:.7;">Web Tasarım <a href="https://hukumdar.com.tr" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Hükümdar Bilişim</a></span>
         </div>
     </div>
 </footer>
