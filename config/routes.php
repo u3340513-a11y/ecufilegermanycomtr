@@ -59,6 +59,7 @@ $router->group('api', [AuthMiddleware::class], function ($router) {
     $router->post('/files/delete', 'App\Controllers\Api\FileApiController@delete');
 
     $router->get('/notifications/unread-count', 'App\Controllers\User\NotificationController@unreadCount');
+    $router->get('/notifications/recent', 'App\Controllers\User\NotificationController@recent');
 });
 
 $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], function ($router) {

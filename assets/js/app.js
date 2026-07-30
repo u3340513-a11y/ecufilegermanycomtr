@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Guard: skip user-specific notification code when inside the admin panel.
+    // Admin panel loads its own admin.js which handles notifications independently.
+    var isAdminPanel = window.location.pathname.indexOf('/admin') === 0;
     var sidebarOpen = document.getElementById('sidebarOpen');
     var sidebarClose = document.getElementById('sidebarClose');
     var sidebar = document.getElementById('sidebar');
@@ -34,17 +37,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    var markAllRead = document.getElementById('markAllRead');
-    if (markAllRead) {
-        markAllRead.addEventListener('click', function(e) {
-            e.preventDefault();
-            fetch('/dashboard/notifications/read-all', {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            }).then(function() {
-                document.querySelectorAll('.notification-dot').forEach(function(d) { d.style.display = 'none'; });
+    if (!isAdminPanel) {
+        var markAllRead = document.getElementById('markAllRead');
+        if (markAllRead) {
+            markAllRead.addEventListener('click', function(e) {
+                e.preventDefault();
+                fetch('/dashboard/notifications/read-all', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).then(function() {
+                    document.querySelectorAll('.notification-dot').forEach(function(d) { d.style.display = 'none'; });
+                });
             });
-        });
+        }
     }
 
     var msgForm = document.getElementById('messageForm');
@@ -77,22 +82,135 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    loadNotificationCount();
-    setInterval(loadNotificationCount, 60000);
+    // Only run user-panel notification polling when NOT in admin panel
+    if (!isAdminPanel) {
+        loadNotificationCount();
+        setInterval(loadNotificationCount, 60000);
+        initUserNotificationDropdown();
+    }
 });
 
 function loadNotificationCount() {
-    fetch('/api/notifications/unread-count')
+    fetch('/api/notifications/unread-count', { credentials: 'same-origin' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.success) {
             var badge = document.getElementById('sidebarNotifBadge');
-            var dot = document.getElementById('headerNotifDot');
-            if (badge) { badge.textContent = data.count > 0 ? data.count : ''; }
-            if (dot) { dot.style.display = data.count > 0 ? 'block' : 'none'; }
+            var dot   = document.getElementById('headerNotifDot');
+            if (badge) badge.textContent = data.count > 0 ? data.count : '';
+            if (dot)   dot.style.display = data.count > 0 ? 'block' : 'none';
         }
     })
     .catch(function() {});
+}
+
+// ── User-panel notification dropdown ─────────────────────────────────────────
+function initUserNotificationDropdown() {
+
+    function escHtml(str) {
+        return String(str || '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function iconForType(type) {
+        return ({request:'fa-file-alt',message:'fa-comment',
+                 credit:'fa-coins',payment:'fa-credit-card'})[type] || 'fa-bell';
+    }
+
+    function renderUserNotifications(notifications) {
+        var list = document.getElementById('notificationList');
+        if (!list) return;
+
+        if (!notifications || notifications.length === 0) {
+            list.innerHTML = '<div class="text-center p-3 text-muted small">Bildirim yok</div>';
+            return;
+        }
+
+        var html = '';
+        notifications.forEach(function(n) {
+            var unread = parseInt(n.is_read, 10) === 0;
+            var link   = escHtml(n.link || '#');
+            html += '<a href="' + link + '" ' +
+                    'class="notification-item d-flex gap-2 align-items-start px-3 py-2' +
+                    (unread ? ' unread' : '') + '" data-notif-id="' + n.id + '" ' +
+                    'style="text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,.05);">' +
+                    '<div class="notification-type-icon flex-shrink-0 mt-1">' +
+                    '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i></div>' +
+                    '<div class="flex-grow-1 overflow-hidden">' +
+                    '<div class="small fw-semibold">' + escHtml(n.title) + '</div>' +
+                    '<div class="small text-muted" style="line-height:1.3;white-space:normal;">' + escHtml(n.content) + '</div>' +
+                    '</div></a>';
+        });
+        list.innerHTML = html;
+
+        // Mark individual item as read on click
+        list.querySelectorAll('[data-notif-id]').forEach(function(el) {
+            el.addEventListener('click', function() {
+                el.classList.remove('unread');
+                fetch('/dashboard/notifications/read/' + el.dataset.notifId, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                }).catch(function(){});
+            });
+        });
+    }
+
+    function loadUserDropdown() {
+        var list = document.getElementById('notificationList');
+        if (!list) return;
+        list.innerHTML = '<div class="text-center p-3 text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Yükleniyor...</div>';
+
+        fetch('/api/notifications/recent', {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+            if (data && data.success) {
+                renderUserNotifications(data.notifications);
+            } else {
+                list.innerHTML = '<div class="text-center p-3 text-muted small">Yüklenemedi</div>';
+            }
+        })
+        .catch(function() {
+            list.innerHTML = '<div class="text-center p-3 text-muted small">Bağlantı hatası</div>';
+        });
+    }
+
+    // Three-strategy dropdown open detection (mirrors admin.js approach)
+    var notifWrap = document.querySelector('.header-notification.dropdown');
+    var notifBtn  = document.getElementById('notifDropdown');
+
+    if (notifWrap) {
+        notifWrap.addEventListener('show.bs.dropdown', function() { loadUserDropdown(); });
+    }
+    if (notifBtn) {
+        notifBtn.addEventListener('shown.bs.dropdown', function() { loadUserDropdown(); });
+        notifBtn.addEventListener('click', function() { setTimeout(loadUserDropdown, 80); });
+    }
+
+    // "Tümünü Okundu İşaretle" — user endpoint
+    var markAllRead = document.getElementById('markAllRead');
+    if (markAllRead) {
+        // Remove any duplicate listeners by cloning
+        var fresh = markAllRead.cloneNode(true);
+        markAllRead.parentNode.replaceChild(fresh, markAllRead);
+        fresh.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('/dashboard/notifications/read-all', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function() {
+                document.querySelectorAll('.notification-dot').forEach(function(d) { d.style.display = 'none'; });
+                var badge = document.getElementById('sidebarNotifBadge');
+                if (badge) badge.textContent = '';
+                loadUserDropdown();
+            })
+            .catch(function(){});
+        });
+    }
 }
 
 function initCreateRequest() {

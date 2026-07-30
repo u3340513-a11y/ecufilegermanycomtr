@@ -21,6 +21,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ─── Toggle Password visibility ──────────────────────────────────────────
+    document.querySelectorAll('.toggle-password').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var target = document.getElementById(btn.dataset.target);
+            if (!target) return;
+            var icon = btn.querySelector('i');
+            if (target.type === 'password') {
+                target.type = 'text';
+                if (icon) { icon.classList.replace('fa-eye', 'fa-eye-slash'); }
+            } else {
+                target.type = 'password';
+                if (icon) { icon.classList.replace('fa-eye-slash', 'fa-eye'); }
+            }
+        });
+    });
+
     // ─── Delete Confirmation ─────────────────────────────────────────────────
     document.querySelectorAll('form[onsubmit]').forEach(function (form) {
         form.removeAttribute('onsubmit');
@@ -37,26 +53,31 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ─── Admin Notification System ───────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Admin Notification System
+    // Polls /admin/notifications/unread-count every 5 seconds.
+    // Loads the 15 most recent notifications into the header dropdown on demand.
+    // When the unread count increases → plays bell + shows toast + reloads page.
+    // ═══════════════════════════════════════════════════════════════════════════
 
     var lastKnownCount = null;
-    var POLL_MS        = 5000; // Poll every 5 seconds
+    var POLL_MS        = 5000;  // 5-second polling
 
-    // ── Audio ────────────────────────────────────────────────────────────────
+    // ── Audio: two-tone bell chime synthesised via Web Audio API ─────────────
     function playBellSound() {
         try {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
-            function tone(freq, startAt, dur, vol) {
-                var osc = ctx.createOscillator();
+            function tone(freq, delay, dur, vol) {
+                var osc  = ctx.createOscillator();
                 var gain = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
-                gain.gain.setValueAtTime(vol, ctx.currentTime + startAt);
-                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + dur);
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+                gain.gain.setValueAtTime(vol,  ctx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.start(ctx.currentTime + startAt);
-                osc.stop(ctx.currentTime + startAt + dur);
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime  + delay + dur);
             }
             tone(880,  0,    0.7, 0.45);
             tone(1320, 0,    0.4, 0.20);
@@ -64,91 +85,85 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {}
     }
 
-    // ── Toast ─────────────────────────────────────────────────────────────────
-    function showToast(count) {
-        if (typeof Swal === 'undefined') return;
-        Swal.fire({
-            toast: true, position: 'bottom-end', icon: 'info',
-            title: count + ' okunmamış bildiriminiz var',
-            showConfirmButton: false, timer: 6000, timerProgressBar: true
-        });
-    }
-
-    // ── Badge ─────────────────────────────────────────────────────────────────
+    // ── Update the red-dot badge ─────────────────────────────────────────────
     function updateBadge(count) {
         var dot   = document.getElementById('headerNotifDot');
         var badge = document.getElementById('adminNotifBadge');
-        if (dot)   dot.style.display   = count > 0 ? 'block' : 'none';
-        if (badge) badge.textContent   = count > 0 ? String(count) : '';
+        if (dot)   dot.style.display = count > 0 ? 'block' : 'none';
+        if (badge) badge.textContent  = count > 0 ? String(count) : '';
     }
 
-    // ── HTML helpers ──────────────────────────────────────────────────────────
-    function escapeHtml(str) {
+    // ── HTML helpers ─────────────────────────────────────────────────────────
+    function esc(str) {
         return String(str || '')
             .replace(/&/g,'&amp;').replace(/</g,'&lt;')
             .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-
     function iconForType(type) {
-        return { request:'fa-file-alt', message:'fa-comment',
-                 credit:'fa-coins', payment:'fa-credit-card' }[type] || 'fa-bell';
+        return ({request:'fa-file-alt',message:'fa-comment',
+                 credit:'fa-coins',payment:'fa-credit-card'})[type] || 'fa-bell';
     }
 
-    // ── Render notifications into dropdown ────────────────────────────────────
-    function renderNotifications(notifications) {
-        var list = document.getElementById('notificationList');
+    // ── Render notifications list into dropdown ──────────────────────────────
+    function renderNotifications(list, notifications) {
         if (!list) return;
-
         if (!notifications || notifications.length === 0) {
             list.innerHTML = '<div class="text-center p-3 text-muted small">Bildirim yok</div>';
             return;
         }
-
         var html = '';
         notifications.forEach(function (n) {
             var unread = parseInt(n.is_read, 10) === 0;
-            var link   = escapeHtml(n.link || '#');
+            var link   = esc(n.link || '#');
             html += '<a href="' + link + '" ' +
                     'class="notification-item d-flex gap-2 align-items-start px-3 py-2' +
-                    (unread ? ' unread' : '') + '" ' +
-                    'data-notif-id="' + n.id + '" style="text-decoration:none;">' +
+                    (unread ? ' unread' : '') + '" data-notif-id="' + n.id + '" ' +
+                    'style="text-decoration:none;color:inherit;border-bottom:1px solid rgba(0,0,0,.05);">' +
                     '<div class="notification-type-icon flex-shrink-0 mt-1">' +
-                    '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i>' +
-                    '</div>' +
+                    '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i></div>' +
                     '<div class="flex-grow-1 overflow-hidden">' +
-                    '<div class="small fw-semibold text-truncate">' + escapeHtml(n.title) + '</div>' +
-                    '<div class="small text-muted" style="white-space:normal;line-height:1.3;">' + escapeHtml(n.content) + '</div>' +
-                    '</div>' +
-                    '</a>';
+                    '<div class="small fw-semibold">' + esc(n.title) + '</div>' +
+                    '<div class="small text-muted" style="line-height:1.3;white-space:normal;">' + esc(n.content) + '</div>' +
+                    '</div></a>';
         });
         list.innerHTML = html;
 
-        // Mark individual notification as read on click
+        // Mark individual item as read on click
         list.querySelectorAll('[data-notif-id]').forEach(function (el) {
             el.addEventListener('click', function () {
                 el.classList.remove('unread');
                 fetch('/admin/notifications/read/' + el.dataset.notifId, {
-                    method: 'POST', credentials: 'same-origin',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                }).catch(function () {});
+                    method:'POST', credentials:'same-origin',
+                    headers:{'X-Requested-With':'XMLHttpRequest'}
+                }).catch(function(){});
             });
         });
     }
 
     // ── Fetch and display recent notifications ────────────────────────────────
     function loadDropdownNotifications() {
+        var listEl = document.getElementById('notificationList');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="text-center p-3 text-muted small"><i class="fas fa-spinner fa-spin me-1"></i>Yükleniyor...</div>';
+
         fetch('/admin/notifications/recent', {
             credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
-            if (data && data.success) renderNotifications(data.notifications);
+            if (data && data.success) {
+                renderNotifications(listEl, data.notifications);
+            } else {
+                listEl.innerHTML = '<div class="text-center p-3 text-muted small">Yüklenemedi</div>';
+            }
         })
-        .catch(function () {});
+        .catch(function () {
+            listEl.innerHTML = '<div class="text-center p-3 text-muted small">Bağlantı hatası</div>';
+        });
     }
 
-    // ── Poll for new notifications ────────────────────────────────────────────
+    // ── Poll for new unread count ─────────────────────────────────────────────
     function pollNotifications() {
         fetch('/admin/notifications/unread-count', {
             credentials: 'same-origin',
@@ -160,13 +175,25 @@ document.addEventListener('DOMContentLoaded', function () {
             var count = parseInt(data.count, 10);
 
             if (lastKnownCount === null) {
-                // First poll — record baseline, no alert
-                lastKnownCount = count;
+                lastKnownCount = count; // Baseline on first poll
             } else if (count > lastKnownCount) {
-                // New notification(s) arrived
+                // New notification(s) arrived since last check
                 playBellSound();
-                showToast(count);
-                loadDropdownNotifications();
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true, position: 'top-end', icon: 'info',
+                        title: '🔔 Yeni bildiriminiz var!',
+                        text: count + ' okunmamış bildirim',
+                        showConfirmButton: false, timer: 4000, timerProgressBar: true
+                    }).then(function () {
+                        // Reload page after toast so admin sees updated state
+                        window.location.reload();
+                    });
+                } else {
+                    window.location.reload();
+                }
+
                 lastKnownCount = count;
             }
 
@@ -175,12 +202,25 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(function () {});
     }
 
-    // ── Open dropdown: load via Bootstrap "show" event (avoids click conflict) ─
+    // ── Attach dropdown open listeners (multiple strategies for reliability) ──
     var notifWrap = document.querySelector('.header-notification.dropdown');
+    var notifBtn  = document.getElementById('notifDropdown');
+
+    // Strategy 1: Bootstrap 5 'show.bs.dropdown' on wrapper
     if (notifWrap) {
-        // Bootstrap 5 fires this just before the dropdown opens
         notifWrap.addEventListener('show.bs.dropdown', function () {
             loadDropdownNotifications();
+        });
+    }
+
+    // Strategy 2: Fallback — Bootstrap 'shown.bs.dropdown' on toggle button
+    if (notifBtn) {
+        notifBtn.addEventListener('shown.bs.dropdown', function () {
+            loadDropdownNotifications();
+        });
+        // Strategy 3: Plain click as last resort (slight delay so dropdown is visible)
+        notifBtn.addEventListener('click', function () {
+            setTimeout(loadDropdownNotifications, 80);
         });
     }
 
@@ -189,6 +229,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (markAllRead) {
         markAllRead.addEventListener('click', function (e) {
             e.preventDefault();
+            e.stopPropagation(); // Prevent Bootstrap closing dropdown
             fetch('/admin/notifications/read-all', {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -202,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Kick off ──────────────────────────────────────────────────────────────
-    pollNotifications();                    // immediate first check
-    setInterval(pollNotifications, POLL_MS); // then every 5 s
+    // ── Kick off polling ──────────────────────────────────────────────────────
+    pollNotifications();                     // immediate first check
+    setInterval(pollNotifications, POLL_MS); // then every 5 seconds
 });

@@ -45,4 +45,13 @@ final class NotificationController extends Controller
         $count = $this->notifService->getUnreadCount($this->userId());
         $this->json(['success' => true, 'count' => $count]);
     }
+
+    /**
+     * Returns the 15 most recent notifications as JSON for the header dropdown.
+     */
+    public function recent(Request $request): void
+    {
+        $notifications = $this->notifService->getForUser($this->userId(), 15);
+        $this->json(['success' => true, 'notifications' => $notifications]);
+    }
 }
