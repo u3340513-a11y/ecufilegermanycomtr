@@ -60,6 +60,19 @@ final class MessageController extends Controller
             $notifService->notifyNewMessage((int) $admin['id'], $reqDetail['ticket_no']);
         }
 
+        // Also send an email to the admin inbox so they're alerted even if the panel is closed
+        try {
+            $mailService = new \App\Services\MailService();
+            $adminUrl = \Core\App::url("admin/requests/{$requestId}");
+            $mailService->sendAdminNewMessageAlert(
+                $reqDetail['user_name'] ?? 'Kullanıcı',
+                $reqDetail['ticket_no'],
+                $adminUrl
+            );
+        } catch (\Throwable) {
+            // Mail failure must not affect the message send result
+        }
+
         $this->json(['success' => true, 'message' => 'Mesaj gönderildi.']);
     }
 }

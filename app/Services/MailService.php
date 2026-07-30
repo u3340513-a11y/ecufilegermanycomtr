@@ -127,6 +127,67 @@ final class MailService
         return $this->send($email, 'Kredi Bilgilendirmesi', $body);
     }
 
+    /**
+     * Sends an alert email to the admin inbox (ADMIN_NOTIFY_EMAIL env variable).
+     * Used to notify the admin of new requests, new messages, and payment events
+     * without requiring them to keep the admin panel open.
+     *
+     * @param string $subject Short subject line for the email.
+     * @param string $body    HTML body content.
+     */
+    public function sendAdminNotification(string $subject, string $body): bool
+    {
+        $adminEmail = env('ADMIN_NOTIFY_EMAIL', '');
+        if ($adminEmail === '') {
+            return false;
+        }
+
+        return $this->send($adminEmail, $subject, $body);
+    }
+
+    /**
+     * Notifies the admin that a new request has been submitted by a user.
+     *
+     * @param string $userName   Display name of the user who submitted the request.
+     * @param string $ticketNo   Ticket number for the new request.
+     * @param string $adminUrl   Full URL to the admin request detail page.
+     */
+    public function sendAdminNewRequestAlert(string $userName, string $ticketNo, string $adminUrl): bool
+    {
+        $body = "
+            <p>Merhaba,</p>
+            <p><strong>{$userName}</strong> tarafından yeni bir talep oluşturuldu.</p>
+            <p style='text-align:center;margin:20px 0;'>
+                <span style='background:#f3f4f6;padding:8px 24px;border-radius:6px;font-weight:600;font-size:16px;'>#{$ticketNo}</span>
+            </p>
+            <p style='text-align:center;'>
+                <a href='{$adminUrl}' style='background:#0ea5e9;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;'>Talebi İncele</a>
+            </p>
+        ";
+
+        return $this->sendAdminNotification("🆕 Yeni Talep #{$ticketNo} — {$userName}", $body);
+    }
+
+    /**
+     * Notifies the admin that a user sent a new message on a request.
+     *
+     * @param string $userName Display name of the message sender.
+     * @param string $ticketNo Ticket number the message belongs to.
+     * @param string $adminUrl Full URL to the admin request detail page.
+     */
+    public function sendAdminNewMessageAlert(string $userName, string $ticketNo, string $adminUrl): bool
+    {
+        $body = "
+            <p>Merhaba,</p>
+            <p><strong>{$userName}</strong>, <strong>#{$ticketNo}</strong> numaralı talebe yeni bir mesaj gönderdi.</p>
+            <p style='text-align:center;margin:20px 0;'>
+                <a href='{$adminUrl}' style='background:#0ea5e9;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;'>Mesajı Görüntüle</a>
+            </p>
+        ";
+
+        return $this->sendAdminNotification("💬 Yeni Mesaj #{$ticketNo} — {$userName}", $body);
+    }
+
     private function wrapInTemplate(string $title, string $body): string
     {
         $siteName = Config::get('app.name', 'ECU Dosya Servis');

@@ -147,6 +147,7 @@ $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], functio
     $router->get('/logs', 'App\Controllers\Admin\LogController@index');
 
     $router->get('/notifications', 'App\Controllers\Admin\NotificationController@index');
+    $router->get('/notifications/unread-count', 'App\Controllers\Admin\NotificationController@unreadCount');
 
     $router->get('/landing', 'App\Controllers\Admin\LandingContentController@index');
     $router->post('/landing/save', 'App\Controllers\Admin\LandingContentController@save');

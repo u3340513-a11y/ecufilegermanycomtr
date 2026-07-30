@@ -108,6 +108,20 @@ final class RequestService
             }
 
             $db->commit();
+
+            // Notify admin by email about the new request (non-critical, outside transaction)
+            try {
+                $mailService = new MailService();
+                $adminUrl = \Core\App::url("admin/requests/{$requestId}");
+                $userName = \Core\Database::getInstance()->fetch(
+                    'SELECT name FROM users WHERE id = ?',
+                    [$userId]
+                )['name'] ?? 'Kullanıcı';
+                $mailService->sendAdminNewRequestAlert($userName, $ticketNo, $adminUrl);
+            } catch (\Throwable) {
+                // Mail failure must not affect the request creation result
+            }
+
             return $requestId;
 
         } catch (\Throwable $e) {
