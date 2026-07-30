@@ -109,17 +109,36 @@ final class RequestService
 
             $db->commit();
 
-            // Notify admin by email about the new request (non-critical, outside transaction)
+            // Post-commit: send in-app notifications to all admins + email alert.
+            // Wrapped in try/catch so any failure here never rolls back the request.
             try {
-                $mailService = new MailService();
-                $adminUrl = \Core\App::url("admin/requests/{$requestId}");
-                $userName = \Core\Database::getInstance()->fetch(
+                $userRecord = Database::getInstance()->fetch(
                     'SELECT name FROM users WHERE id = ?',
                     [$userId]
-                )['name'] ?? 'Kullanıcı';
+                );
+                $userName = $userRecord['name'] ?? 'Kullanıcı';
+
+                // Create in-app notification for every active admin
+                $adminUsers = Database::getInstance()->fetchAll(
+                    "SELECT id FROM users WHERE role = 'admin' AND is_active = 1"
+                );
+                foreach ($adminUsers as $admin) {
+                    $this->notifService->create(
+                        (int) $admin['id'],
+                        'Yeni Talep',
+                        "{$userName} tarafından #{$ticketNo} numaralı yeni bir talep oluşturuldu.",
+                        'request',
+                        "/admin/requests/{$requestId}"
+                    );
+                }
+
+                // Email alert to admin inbox
+                $mailService = new MailService();
+                $adminUrl    = \Core\App::url("admin/requests/{$requestId}");
                 $mailService->sendAdminNewRequestAlert($userName, $ticketNo, $adminUrl);
+
             } catch (\Throwable) {
-                // Mail failure must not affect the request creation result
+                // Non-critical — request creation succeeds regardless
             }
 
             return $requestId;

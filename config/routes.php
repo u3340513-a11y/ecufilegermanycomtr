@@ -148,6 +148,9 @@ $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], functio
 
     $router->get('/notifications', 'App\Controllers\Admin\NotificationController@index');
     $router->get('/notifications/unread-count', 'App\Controllers\Admin\NotificationController@unreadCount');
+    $router->get('/notifications/recent', 'App\Controllers\Admin\NotificationController@recent');
+    $router->post('/notifications/read-all', 'App\Controllers\Admin\NotificationController@markAllRead');
+    $router->post('/notifications/read/{id}', 'App\Controllers\Admin\NotificationController@markRead');
 
     $router->get('/landing', 'App\Controllers\Admin\LandingContentController@index');
     $router->post('/landing/save', 'App\Controllers\Admin\LandingContentController@save');

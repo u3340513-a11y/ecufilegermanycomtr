@@ -37,115 +37,194 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ─── Admin Notification Polling + Bell Sound ─────────────────────────────
+    // ─── Admin Notification System ───────────────────────────────────────────
+
+    var lastKnownCount  = null;
+    var POLL_MS         = 30000; // 30 seconds
+
     /**
-     * Polls /admin/notifications/unread-count every 30 seconds.
-     * When the unread count increases compared to the last known value,
-     * plays a soft bell chime generated via the Web Audio API and shows
-     * a SweetAlert2 toast in the bottom-right corner.
-     *
-     * Requires: SweetAlert2 (already loaded in admin layout)
+     * Synthesises a short two-tone bell chime using the Web Audio API.
+     * No external audio file is needed.
      */
-    (function initAdminNotifPoller() {
+    function playBellSound() {
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
 
-        /** Synthesises a short bell chime using the Web Audio API (no external file needed). */
-        function playBellSound() {
-            try {
-                var ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-                // Oscillator 1 — fundamental
-                var osc1 = ctx.createOscillator();
-                var gain1 = ctx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(880, ctx.currentTime);
-                osc1.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.4);
-                gain1.gain.setValueAtTime(0.5, ctx.currentTime);
-                gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-                osc1.connect(gain1);
-                gain1.connect(ctx.destination);
-                osc1.start(ctx.currentTime);
-                osc1.stop(ctx.currentTime + 0.8);
-
-                // Oscillator 2 — harmonic overtone
-                var osc2 = ctx.createOscillator();
-                var gain2 = ctx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(1320, ctx.currentTime);
-                gain2.gain.setValueAtTime(0.25, ctx.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-                osc2.connect(gain2);
-                gain2.connect(ctx.destination);
-                osc2.start(ctx.currentTime);
-                osc2.stop(ctx.currentTime + 0.5);
-            } catch (e) {
-                // AudioContext may be blocked on some browsers — safe to ignore
+            function tone(freq, startAt, duration, volume) {
+                var osc  = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + startAt);
+                gain.gain.setValueAtTime(volume, ctx.currentTime + startAt);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + startAt);
+                osc.stop(ctx.currentTime + startAt + duration);
             }
+
+            tone(880,  0,    0.7, 0.45); // fundamental
+            tone(1320, 0,    0.4, 0.20); // overtone
+            tone(660,  0.25, 0.5, 0.25); // second note
+        } catch (e) { /* AudioContext may be unavailable — safe to ignore */ }
+    }
+
+    /** Shows a SweetAlert2 toast in the bottom-right corner. */
+    function showToast(count) {
+        if (typeof Swal === 'undefined') return;
+        Swal.fire({
+            toast: true,
+            position: 'bottom-end',
+            icon: 'info',
+            title: count + ' okunmamış bildiriminiz var',
+            showConfirmButton: false,
+            timer: 6000,
+            timerProgressBar: true
+        });
+    }
+
+    /** Updates the red dot badge on the header bell icon. */
+    function updateBadge(count) {
+        var dot = document.getElementById('headerNotifDot');
+        if (dot) dot.style.display = count > 0 ? 'block' : 'none';
+
+        // Also update badge text if it exists (sidebar)
+        var badge = document.getElementById('adminNotifBadge');
+        if (badge) badge.textContent = count > 0 ? count : '';
+    }
+
+    /**
+     * Renders notifications fetched from /admin/notifications/recent
+     * into the header dropdown list (#notificationList).
+     */
+    function renderNotifications(notifications) {
+        var list = document.getElementById('notificationList');
+        if (!list) return;
+
+        if (!notifications || notifications.length === 0) {
+            list.innerHTML = '<div class="text-center p-3 text-muted small">Bildirim yok</div>';
+            return;
         }
 
-        /** Shows a non-blocking toast notification in the bottom-right corner. */
-        function showToast(count) {
-            if (typeof Swal === 'undefined') return;
-            Swal.fire({
-                toast: true,
-                position: 'bottom-end',
-                icon: 'info',
-                title: count + ' okunmamış bildiriminiz var',
-                showConfirmButton: false,
-                timer: 5000,
-                timerProgressBar: true,
-                background: '#0f172a',
-                color: '#e0f2fe',
-                iconColor: '#38bdf8',
-                customClass: { popup: 'admin-notif-toast' }
+        var html = '';
+        notifications.forEach(function (n) {
+            var isUnread = n.is_read == 0 || n.is_read === '0' || n.is_read === false;
+            var link     = n.link || '#';
+            html += '<a href="' + link + '" class="notification-item d-flex gap-2 align-items-start' +
+                    (isUnread ? ' unread' : '') + '" data-notif-id="' + n.id + '">' +
+                    '<div class="notification-type-icon flex-shrink-0">' +
+                    '<i class="fas ' + iconForType(n.type) + ' fa-sm"></i>' +
+                    '</div>' +
+                    '<div class="flex-grow-1 min-w-0">' +
+                    '<div class="small fw-semibold text-truncate">' + escapeHtml(n.title) + '</div>' +
+                    '<div class="small text-muted text-truncate">' + escapeHtml(n.content) + '</div>' +
+                    '</div>' +
+                    '</a>';
+        });
+
+        list.innerHTML = html;
+
+        // Mark notification as read on click (without navigation change)
+        list.querySelectorAll('[data-notif-id]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                var nid = el.dataset.notifId;
+                if (nid) {
+                    fetch('/admin/notifications/read/' + nid, {
+                        method: 'POST', credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    }).catch(function () {});
+                    el.classList.remove('unread');
+                }
             });
-        }
+        });
+    }
 
-        var lastKnownCount = null;
-        var POLL_INTERVAL_MS = 30000; // 30 seconds
+    function iconForType(type) {
+        var map = {
+            request: 'fa-file-alt', message: 'fa-comment', credit: 'fa-coins',
+            payment: 'fa-credit-card', info: 'fa-info-circle'
+        };
+        return map[type] || 'fa-bell';
+    }
 
-        function poll() {
-            fetch('/admin/notifications/unread-count', {
-                method: 'GET',
-                credentials: 'same-origin',
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /**
+     * Fetches the unread count.
+     * On first load: stores baseline. On subsequent polls: plays bell if count increased.
+     */
+    function pollNotifications() {
+        fetch('/admin/notifications/unread-count', {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (!data || !data.success) return;
+            var count = parseInt(data.count, 10);
+
+            if (lastKnownCount === null) {
+                // First poll — just set baseline
+                lastKnownCount = count;
+            } else if (count > lastKnownCount) {
+                // New notification(s) arrived since last poll
+                playBellSound();
+                showToast(count);
+                loadDropdownNotifications(); // refresh the dropdown too
+            }
+
+            lastKnownCount = count;
+            updateBadge(count);
+        })
+        .catch(function () { /* network error — retry next interval */ });
+    }
+
+    /** Loads recent notifications into the header dropdown. */
+    function loadDropdownNotifications() {
+        fetch('/admin/notifications/recent', {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+            if (data && data.success) renderNotifications(data.notifications);
+        })
+        .catch(function () {});
+    }
+
+    // ── Load dropdown on bell click ──
+    var notifDropdown = document.getElementById('notifDropdown');
+    if (notifDropdown) {
+        notifDropdown.addEventListener('click', function () {
+            loadDropdownNotifications();
+        });
+    }
+
+    // ── "Tümünü Okundu İşaretle" ──
+    var markAllRead = document.getElementById('markAllRead');
+    if (markAllRead) {
+        markAllRead.addEventListener('click', function (e) {
+            e.preventDefault();
+            fetch('/admin/notifications/read-all', {
+                method: 'POST', credentials: 'same-origin',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
-            .then(function (res) { return res.ok ? res.json() : null; })
-            .then(function (data) {
-                if (!data || !data.success) return;
-
-                var count = parseInt(data.count, 10);
-
-                // First load: just store the baseline without alerting
-                if (lastKnownCount === null) {
-                    lastKnownCount = count;
-                    updateBadge(count);
-                    return;
-                }
-
-                // Count increased → new notification(s) arrived
-                if (count > lastKnownCount) {
-                    playBellSound();
-                    showToast(count);
-                }
-
-                lastKnownCount = count;
-                updateBadge(count);
+            .then(function () {
+                lastKnownCount = 0;
+                updateBadge(0);
+                loadDropdownNotifications();
             })
-            .catch(function () { /* Network error — silently retry next interval */ });
-        }
+            .catch(function () {});
+        });
+    }
 
-        /** Updates the red dot visibility on the header bell icon. */
-        function updateBadge(count) {
-            var dot = document.getElementById('headerNotifDot');
-            if (dot) {
-                dot.style.display = count > 0 ? 'block' : 'none';
-            }
-        }
-
-        // Initial poll immediately, then every POLL_INTERVAL_MS
-        poll();
-        setInterval(poll, POLL_INTERVAL_MS);
-
-    })();
+    // ── Start polling ──
+    pollNotifications();
+    setInterval(pollNotifications, POLL_MS);
 
 });
