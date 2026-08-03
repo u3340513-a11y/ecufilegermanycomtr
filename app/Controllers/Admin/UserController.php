@@ -8,31 +8,83 @@ use Core\Controller;
 use Core\Request;
 use App\Repositories\UserRepository;
 use App\Services\CreditService;
+use App\Services\MailService;
 use App\Services\NotificationService;
 
 final class UserController extends Controller
 {
     private UserRepository $userRepo;
+    private MailService    $mailService;
 
     public function __construct()
     {
         parent::__construct();
-        $this->userRepo = new UserRepository();
+        $this->userRepo    = new UserRepository();
+        $this->mailService = new MailService();
     }
 
     public function index(Request $request): void
     {
-        $page = (int) ($request->get('page') ?: 1);
+        $page   = (int) ($request->get('page') ?: 1);
         $result = $this->userRepo->getAll($page);
 
         $this->view('admin/users/index', [
-            'pageTitle'  => 'Kullanıcılar',
-            'currentPage' => 'admin-users',
-            'users'      => $result['data'],
-            'total'      => $result['total'],
-            'page'       => $result['current_page'],
-            'totalPages' => $result['total_pages'],
+            'pageTitle'    => 'Kullanıcılar',
+            'currentPage'  => 'admin-users',
+            'users'        => $result['data'],
+            'total'        => $result['total'],
+            'page'         => $result['current_page'],
+            'totalPages'   => $result['total_pages'],
+            'pendingCount' => $this->userRepo->countPendingVerification(),
         ], 'admin');
+    }
+
+    /**
+     * Lists users who have registered but not yet verified their e-mail.
+     * Allows admin to approve them manually when verification mails land in spam.
+     */
+    public function pendingVerification(Request $request): void
+    {
+        $page   = (int) ($request->get('page') ?: 1);
+        $result = $this->userRepo->getPendingVerification($page);
+
+        $this->view('admin/users/pending-verification', [
+            'pageTitle'   => 'E-posta Onay Bekleyenler',
+            'currentPage' => 'admin-users',
+            'users'       => $result['data'],
+            'total'       => $result['total'],
+            'page'        => $result['current_page'],
+            'totalPages'  => $result['total_pages'],
+        ], 'admin');
+    }
+
+    /**
+     * Manually approves a user's e-mail verification.
+     * Sends a notification e-mail to the user upon success.
+     * If the mail fails, the approval is still committed.
+     */
+    public function approveVerification(Request $request, string $id): void
+    {
+        $userId = (int) $id;
+        $user   = $this->userRepo->findById($userId);
+
+        if (!$user) {
+            $this->withError('Kullanıcı bulunamadı.', '/admin/users/pending-verification');
+        }
+
+        if ((bool) $user['email_verified']) {
+            $this->withError('Bu kullanıcının e-postası zaten onaylı.', '/admin/users/pending-verification');
+        }
+
+        $this->userRepo->verifyEmailById($userId);
+
+        // Best-effort: failure does not block the approval
+        $this->mailService->sendAccountApprovedEmail($user['email'], $user['name']);
+
+        $this->withSuccess(
+            \Core\View::escape($user['name']) . ' kullanıcısının e-postası onaylandı.',
+            '/admin/users/pending-verification'
+        );
     }
 
     public function show(Request $request, string $id): void
@@ -41,7 +93,7 @@ final class UserController extends Controller
         if (!$user) { $this->redirect('/admin/users'); }
 
         $db = \Core\Database::getInstance();
-        $requests = $db->fetchAll('SELECT * FROM requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [(int)$id]);
+        $requests     = $db->fetchAll('SELECT * FROM requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [(int)$id]);
         $transactions = $db->fetchAll('SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [(int)$id]);
 
         $this->view('admin/users/show', [

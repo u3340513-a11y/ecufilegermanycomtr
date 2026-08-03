@@ -108,4 +108,49 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->count('users', 'role = ?', [$role]);
     }
+
+    /**
+     * Returns paginated list of users who have not yet verified their e-mail address.
+     * Used by the admin panel to allow manual approval when confirmation mails land in spam.
+     */
+    public function getPendingVerification(int $page = 1, int $perPage = 20): array
+    {
+        $total      = $this->countPendingVerification();
+        $totalPages = (int) ceil($total / $perPage);
+        $page       = max(1, min($page, $totalPages ?: 1));
+        $offset     = ($page - 1) * $perPage;
+
+        $data = $this->db->fetchAll(
+            'SELECT id, name, email, phone, company, created_at FROM users WHERE email_verified = 0 AND role = ? ORDER BY created_at DESC LIMIT ? OFFSET ?',
+            ['user', $perPage, $offset]
+        );
+
+        return [
+            'data'         => $data,
+            'total'        => $total,
+            'current_page' => $page,
+            'total_pages'  => $totalPages,
+            'per_page'     => $perPage,
+        ];
+    }
+
+    /**
+     * Marks a single user's e-mail address as verified (admin manual approval).
+     * Clears the email_token so the old verification link is invalidated.
+     */
+    public function verifyEmailById(int $id): int
+    {
+        return $this->db->update('users', [
+            'email_verified' => 1,
+            'email_token'    => null,
+        ], 'id = ?', [$id]);
+    }
+
+    /**
+     * Returns the count of users whose e-mail address is still unverified.
+     */
+    public function countPendingVerification(): int
+    {
+        return $this->db->count('users', 'email_verified = 0 AND role = ?', ['user']);
+    }
 }

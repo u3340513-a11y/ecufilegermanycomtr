@@ -6,14 +6,32 @@
             <h5><?= \Core\View::escape($user['name']) ?></h5>
             <p class="text-muted"><?= \Core\View::escape($user['email']) ?></p>
             <span class="badge bg-<?= $user['role'] === 'admin' ? 'danger' : 'primary' ?> mb-2"><?= $user['role'] ?></span>
-            <div class="d-flex justify-content-between mt-3"><span>Kredi</span><strong><?= $user['credit_balance'] ?> Kr</strong></div>
+            <div class="d-flex justify-content-between mt-3"><span>Kredi</span><strong><?= (int) $user['credit_balance'] ?> Kr</strong></div>
             <div class="d-flex justify-content-between"><span>Durum</span><span class="badge bg-<?= $user['is_active'] ? 'success' : 'danger' ?>"><?= $user['is_active'] ? 'Aktif' : 'Pasif' ?></span></div>
+            <div class="d-flex justify-content-between"><span>E-posta Onayı</span>
+                <?php if ($user['email_verified']): ?>
+                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Onaylı</span>
+                <?php else: ?>
+                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Bekliyor</span>
+                <?php endif; ?>
+            </div>
             <hr>
             <div class="d-flex gap-2">
-                <a href="/admin/users/<?= $user['id'] ?>/edit" class="btn btn-sm btn-outline-primary flex-fill"><i class="fas fa-edit me-1"></i>Düzenle</a>
-                <form method="POST" action="/admin/users/<?= $user['id'] ?>/toggle-status" class="flex-fill"><?= \Core\View::csrf() ?><button class="btn btn-sm btn-outline-<?= $user['is_active'] ? 'danger' : 'success' ?> w-100"><?= $user['is_active'] ? 'Devre Dışı' : 'Aktifleştir' ?></button></form>
+                <a href="/admin/users/<?= (int) $user['id'] ?>/edit" class="btn btn-sm btn-outline-primary flex-fill"><i class="fas fa-edit me-1"></i>Düzenle</a>
+                <form method="POST" action="/admin/users/<?= (int) $user['id'] ?>/toggle-status" class="flex-fill"><?= \Core\View::csrf() ?><button class="btn btn-sm btn-outline-<?= $user['is_active'] ? 'danger' : 'success' ?> w-100"><?= $user['is_active'] ? 'Devre Dışı' : 'Aktifleştir' ?></button></form>
             </div>
+            <?php if (!$user['email_verified']): ?>
+            <div class="mt-2">
+                <form method="POST" action="/admin/users/<?= (int) $user['id'] ?>/approve-verification" id="approveVerificationForm">
+                    <?= \Core\View::csrf() ?>
+                    <button type="button" class="btn btn-sm btn-success w-100" onclick="confirmApprove()">
+                        <i class="fas fa-envelope-open me-1"></i>E-postayı Manuel Onayla
+                    </button>
+                </form>
+            </div>
+            <?php endif; ?>
             <?php if ($user['role'] !== 'admin'): ?>
+
             <hr>
             <div class="border border-danger rounded p-3 mt-1">
                 <p class="text-danger small fw-semibold mb-2"><i class="fas fa-exclamation-triangle me-1"></i>Tehlike Bölgesi</p>
@@ -49,6 +67,23 @@ function confirmDelete() {
     }).then((result) => {
         if (result.isConfirmed) {
             document.getElementById('deleteUserForm').submit();
+        }
+    });
+}
+
+function confirmApprove() {
+    Swal.fire({
+        title: 'E-postayı onaylayacaksınız',
+        html: 'Bu kullanıcının e-posta doğrulaması <b>manuel olarak onaylanacak</b> ve sisteme giriş yapabilecek.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-check me-1"></i>Evet, Onayla',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('approveVerificationForm').submit();
         }
     });
 }

@@ -188,6 +188,28 @@ final class MailService
         return $this->sendAdminNotification("💬 Yeni Mesaj #{$ticketNo} — {$userName}", $body);
     }
 
+    /**
+     * Notifies the user that their account has been manually approved by an admin.
+     * Intentionally kept link-free to minimise spam filter triggers.
+     *
+     * @param string $email Recipient e-mail address.
+     * @param string $name  Recipient display name.
+     */
+    public function sendAccountApprovedEmail(string $email, string $name): bool
+    {
+        $loginUrl = App::url('login');
+        $body = "
+            <p>Merhaba <strong>{$name}</strong>,</p>
+            <p>Hesabınız yönetici tarafından onaylandı. Artık sisteme giriş yapabilirsiniz.</p>
+            <p style='text-align:center;margin:30px 0;'>
+                <a href='{$loginUrl}' style='background:#16a34a;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;'>Giriş Yap</a>
+            </p>
+            <p style='color:#6b7280;font-size:13px;'>Herhangi bir sorunuz olursa lütfen bizimle iletişime geçin.</p>
+        ";
+
+        return $this->send($email, 'Hesabınız Onaylandı', $body);
+    }
+
     private function wrapInTemplate(string $title, string $body): string
     {
         $siteName = Config::get('app.name', 'ECU Dosya Servis');

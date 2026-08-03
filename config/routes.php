@@ -66,11 +66,14 @@ $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], functio
     $router->get('/', 'App\Controllers\Admin\DashboardController@index');
 
     $router->get('/users', 'App\Controllers\Admin\UserController@index');
+    $router->get('/users/pending-verification', 'App\Controllers\Admin\UserController@pendingVerification');
+    $router->post('/users/{id}/approve-verification', 'App\Controllers\Admin\UserController@approveVerification', [CsrfMiddleware::class]);
     $router->get('/users/{id}', 'App\Controllers\Admin\UserController@show');
     $router->get('/users/{id}/edit', 'App\Controllers\Admin\UserController@edit');
-    $router->post('/users/{id}/update', 'App\Controllers\Admin\UserController@update');
-    $router->post('/users/{id}/toggle-status', 'App\Controllers\Admin\UserController@toggleStatus');
-    $router->post('/users/{id}/delete', 'App\Controllers\Admin\UserController@delete');
+    $router->post('/users/{id}/update', 'App\Controllers\Admin\UserController@update', [CsrfMiddleware::class]);
+    $router->post('/users/{id}/toggle-status', 'App\Controllers\Admin\UserController@toggleStatus', [CsrfMiddleware::class]);
+    $router->post('/users/{id}/delete', 'App\Controllers\Admin\UserController@delete', [CsrfMiddleware::class]);
+
 
     $router->get('/requests', 'App\Controllers\Admin\RequestController@index');
     $router->get('/requests/{id}', 'App\Controllers\Admin\RequestController@show');
