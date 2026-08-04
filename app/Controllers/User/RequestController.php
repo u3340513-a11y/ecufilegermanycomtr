@@ -9,6 +9,8 @@ use Core\Request;
 use Core\Database;
 use App\Services\RequestService;
 use App\Repositories\MessageRepository;
+use App\Repositories\FileRepository;
+use App\Helpers\FileUploader;
 
 final class RequestController extends Controller
 {
@@ -121,5 +123,45 @@ final class RequestController extends Controller
             'req'         => $detail,
             'messages'    => $messages,
         ]);
+    }
+
+    public function uploadRevision(Request $request, string $id): void
+    {
+        $detail = $this->service->getRequestDetail((int) $id);
+        if (!$detail || (int) $detail['user_id'] !== $this->userId()) {
+            $this->withError('Talep bulunamadı.', '/dashboard/requests');
+        }
+
+        if (in_array($detail['status'], ['completed', 'cancelled'], true)) {
+            $this->withError('Bu talep için dosya yüklenemez.', '/dashboard/requests/' . $id);
+        }
+
+        if (!$request->hasFile('revision_file')) {
+            $this->withError('Lütfen bir dosya seçin.', '/dashboard/requests/' . $id);
+        }
+
+        $uploader = new FileUploader('requests');
+
+        try {
+            $file = $uploader->upload($request->file('revision_file'));
+            $fileRepo = new FileRepository();
+            $version = $fileRepo->getNextVersion((int) $id, 'revision');
+
+            $fileRepo->create([
+                'request_id'    => (int) $id,
+                'user_id'       => $this->userId(),
+                'filename'      => $file['filename'],
+                'original_name' => $file['original_name'],
+                'path'          => $file['path'],
+                'size'          => $file['size'],
+                'mime_type'     => $file['mime_type'],
+                'type'          => 'revision',
+                'version'       => $version,
+            ]);
+
+            $this->withSuccess('Dosya başarıyla yüklendi.', '/dashboard/requests/' . $id);
+        } catch (\RuntimeException $e) {
+            $this->withError($e->getMessage(), '/dashboard/requests/' . $id);
+        }
     }
 }

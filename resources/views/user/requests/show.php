@@ -106,6 +106,31 @@ $sl = ['pending'=>'Bekliyor','reviewing'=>'İnceleniyor','processing'=>'İşlemd
     </div>
 
     <div class="col-lg-4">
+        <?php if (!in_array($req['status'], ['completed', 'cancelled'])): ?>
+        <div class="card mb-4">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-upload me-2"></i>Dosya Yükle</h6></div>
+            <div class="card-body">
+                <form method="POST" action="/dashboard/requests/<?= $req['id'] ?>/upload-revision" enctype="multipart/form-data" id="revisionUploadForm">
+                    <?= \Core\View::csrf() ?>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Dosya Türü</label>
+                        <select name="file_type" class="form-select form-select-sm" disabled>
+                            <option value="revision">Revizyon</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small text-muted">Dosya Seç</label>
+                        <input type="file" name="revision_file" id="revisionFile" class="form-control form-control-sm" required accept=".bin,.ori,.mod,.zip,.rar,.7z,.pdf">
+                        <div class="form-text">İzin verilen: bin, ori, mod, zip, rar, 7z, pdf (maks. 20MB)</div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100" id="revisionUploadBtn">
+                        <i class="fas fa-upload me-1"></i>Yükle
+                    </button>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="card mb-4">
             <div class="card-header"><h6 class="mb-0"><i class="fas fa-file-archive me-2"></i>Dosya Geçmişi</h6></div>
             <div class="card-body">

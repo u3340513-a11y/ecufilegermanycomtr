@@ -80,13 +80,31 @@
             </div>
         </div>
 
-        <div class="card mb-4"><div class="card-header"><h6 class="mb-0">Dosya Yükle</h6></div><div class="card-body">
-            <form method="POST" action="/admin/requests/<?= $req['id'] ?>/upload-file" enctype="multipart/form-data"><?= \Core\View::csrf() ?>
-                <select name="file_type" class="form-select mb-2"><option value="revision">Revizyon</option><option value="completed">Tamamlanan</option></select>
-                <input type="file" name="file" class="form-control mb-2" required>
-                <button class="btn btn-success w-100"><i class="fas fa-upload me-1"></i>Yükle</button>
-            </form>
-        </div></div>
+        <div class="card mb-4">
+            <div class="card-header"><h6 class="mb-0"><i class="fas fa-upload me-1"></i>Dosya Yükle</h6></div>
+            <div class="card-body">
+                <form method="POST"
+                      action="/admin/requests/<?= $req['id'] ?>/upload-file"
+                      enctype="multipart/form-data"
+                      id="adminUploadForm">
+                    <?= \Core\View::csrf() ?>
+                    <div class="mb-2">
+                        <label class="form-label form-label-sm text-muted mb-1">Dosya Türü</label>
+                        <select name="file_type" class="form-select form-select-sm">
+                            <option value="revision">Revizyon</option>
+                            <option value="completed">Tamamlanan</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label form-label-sm text-muted mb-1">Dosya Seç</label>
+                        <input type="file" name="file" class="form-control form-control-sm" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-upload me-1"></i>Yükle
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <div class="card"><div class="card-header"><h6 class="mb-0">Dosyalar</h6></div><div class="card-body">
             <?php $grouped = ['original'=>[],'revision'=>[],'completed'=>[]]; foreach ($req['files'] as $f) { $grouped[$f['type']][] = $f; } $tl = ['original'=>'Orijinal','revision'=>'Revizyon','completed'=>'Tamamlanan']; ?>

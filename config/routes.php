@@ -32,6 +32,7 @@ $router->group('dashboard', [AuthMiddleware::class], function ($router) {
     $router->get('/requests/create', 'App\Controllers\User\RequestController@create');
     $router->post('/requests/store', 'App\Controllers\User\RequestController@store');
     $router->get('/requests/{id}', 'App\Controllers\User\RequestController@show');
+    $router->post('/requests/{id}/upload-revision', 'App\Controllers\User\RequestController@uploadRevision', [CsrfMiddleware::class]);
 
     $router->post('/messages/send', 'App\Controllers\User\MessageController@send');
 
@@ -78,7 +79,7 @@ $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], functio
     $router->get('/requests', 'App\Controllers\Admin\RequestController@index');
     $router->get('/requests/{id}', 'App\Controllers\Admin\RequestController@show');
     $router->post('/requests/{id}/status', 'App\Controllers\Admin\RequestController@updateStatus');
-    $router->post('/requests/{id}/upload-file', 'App\Controllers\Admin\RequestController@uploadFile');
+    $router->post('/requests/{id}/upload-file', 'App\Controllers\Admin\RequestController@uploadFile', [CsrfMiddleware::class]);
     $router->post('/requests/{id}/message', 'App\Controllers\Admin\RequestController@sendMessage');
     $router->post('/requests/{id}/add-service', 'App\Controllers\Admin\RequestController@addService');
 

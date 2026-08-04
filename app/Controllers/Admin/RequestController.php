@@ -82,10 +82,15 @@ final class RequestController extends Controller
     public function uploadFile(Request $request, string $id): void
     {
         if (!$request->hasFile('file')) {
-            $this->withError('Dosya seçilmedi.', '/admin/requests/' . $id);
+            $this->withError('Dosya seçilmedi veya yükleme başarısız oldu.', '/admin/requests/' . $id);
         }
 
         $type = $request->post('file_type', 'revision');
+        $validTypes = ['revision', 'completed', 'original'];
+        if (!in_array($type, $validTypes, true)) {
+            $type = 'revision';
+        }
+
         $uploader = new FileUploader('requests');
 
         try {
@@ -111,9 +116,9 @@ final class RequestController extends Controller
                 $notifService->notifyRequestUpdate((int) $reqDetail['user_id'], $reqDetail['ticket_no'], $reqDetail['status']);
             }
 
-            $this->withSuccess('Dosya yüklendi.', '/admin/requests/' . $id);
+            $this->withSuccess('Dosya başarıyla yüklendi.', '/admin/requests/' . $id);
         } catch (\Throwable $e) {
-            $this->withError($e->getMessage(), '/admin/requests/' . $id);
+            $this->withError('Yükleme hatası: ' . $e->getMessage(), '/admin/requests/' . $id);
         }
     }
 
