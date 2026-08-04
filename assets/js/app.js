@@ -301,8 +301,8 @@ function initCreateRequest() {
     }
 
     var stagePricingData = null;
-    var currentStageId = null;
-    var currentBaseCredit = 0;
+    /** @type {Map<number, {baseCredit: number, slug: string, showServices: number}>} */
+    var selectedStages = new Map(); // stageId -> {baseCredit, slug, showServices}
 
     fetch('/api/stages/pricing')
     .then(function(r) { return r.json(); })
@@ -313,67 +313,122 @@ function initCreateRequest() {
         }
     });
 
+    /**
+     * Seçili stage ID'lerinden toplam base kredi hesaplar.
+     * @returns {number}
+     */
+    function getTotalBaseCredit() {
+        var total = 0;
+        selectedStages.forEach(function(info) { total += info.baseCredit; });
+        return total;
+    }
+
+    /**
+     * stageIdsContainer'daki hidden input'ları günceller.
+     * Her seçili stage için name="stage_ids[]" hidden input oluşturur.
+     */
+    function syncStageInputs() {
+        var container = document.getElementById('stageIdsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        selectedStages.forEach(function(info, id) {
+            var inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'stage_ids[]';
+            inp.value = id;
+            container.appendChild(inp);
+        });
+    }
+
+    /**
+     * Servis grid'ini günceller: seçili tüm stage'lerin servislerini birleştirir.
+     */
+    function renderCombinedServices() {
+        var servicesSection  = document.getElementById('servicesSection');
+        var originalNotice   = document.getElementById('originalFileNotice');
+        var hasOriginalFile  = false;
+        var hasServicesStage = false;
+        var combinedServices = {};
+
+        selectedStages.forEach(function(info, id) {
+            if (info.slug === 'original-file') {
+                hasOriginalFile = true;
+            } else if (info.showServices === 1) {
+                hasServicesStage = true;
+                var services = (stagePricingData.pricing && stagePricingData.pricing[id]) || [];
+                services.forEach(function(svc) {
+                    if (!combinedServices[svc.id]) {
+                        combinedServices[svc.id] = svc;
+                    }
+                });
+            }
+        });
+
+        if (selectedStages.size === 0) {
+            servicesSection.style.display  = 'none';
+            originalNotice.style.display   = 'none';
+            renderServices([]);
+            return;
+        }
+
+        if (hasOriginalFile && !hasServicesStage) {
+            servicesSection.style.display  = 'none';
+            originalNotice.style.display   = 'block';
+            renderServices([]);
+        } else if (hasServicesStage) {
+            servicesSection.style.display  = 'block';
+            originalNotice.style.display   = hasOriginalFile ? 'block' : 'none';
+            renderServices(Object.values(combinedServices));
+        } else {
+            servicesSection.style.display  = 'none';
+            originalNotice.style.display   = 'none';
+            renderServices([]);
+        }
+    }
+
     function initStageButtons() {
         var stageBtns = document.querySelectorAll('.stage-btn');
-        var moreBtn = document.getElementById('moreOptionsBtn');
+        var moreBtn   = document.getElementById('moreOptionsBtn');
 
         stageBtns.forEach(function(btn) {
             btn.addEventListener('click', function() {
-                stageBtns.forEach(function(b) { b.classList.remove('active'); });
-                if (moreBtn) moreBtn.classList.remove('active');
-                btn.classList.add('active');
-
-                currentStageId = parseInt(btn.dataset.stageId);
-                currentBaseCredit = parseInt(btn.dataset.baseCredit);
+                var stageId     = parseInt(btn.dataset.stageId);
+                var baseCredit  = parseInt(btn.dataset.baseCredit);
                 var showServices = parseInt(btn.dataset.showServices);
-                var slug = btn.dataset.slug;
+                var slug        = btn.dataset.slug;
 
-                document.getElementById('stageIdInput').value = currentStageId;
-
-                var servicesSection = document.getElementById('servicesSection');
-                var originalNotice = document.getElementById('originalFileNotice');
-
-                if (slug === 'original-file') {
-                    servicesSection.style.display = 'none';
-                    originalNotice.style.display = 'block';
-                    renderServices([]);
-                } else if (showServices === 1) {
-                    servicesSection.style.display = 'block';
-                    originalNotice.style.display = 'none';
-                    var services = stagePricingData.pricing[currentStageId] || [];
-                    renderServices(services);
+                // Toggle: seçiliyse kaldır, değilse ekle
+                if (selectedStages.has(stageId)) {
+                    selectedStages.delete(stageId);
+                    btn.classList.remove('active');
                 } else {
-                    servicesSection.style.display = 'none';
-                    originalNotice.style.display = 'none';
-                    renderServices([]);
+                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices });
+                    btn.classList.add('active');
                 }
 
+                syncStageInputs();
+                renderCombinedServices();
                 updateCreditDisplay();
             });
         });
 
         if (moreBtn) {
             moreBtn.addEventListener('click', function() {
-                stageBtns.forEach(function(b) { b.classList.remove('active'); });
-                moreBtn.classList.toggle('active');
+                var stageId    = parseInt(moreBtn.dataset.stageId);
+                var baseCredit = parseInt(moreBtn.dataset.baseCredit);
+                var slug       = moreBtn.dataset.slug;
+                var showServices = parseInt(moreBtn.dataset.showServices);
 
-                if (moreBtn.classList.contains('active')) {
-                    currentStageId = parseInt(moreBtn.dataset.stageId);
-                    currentBaseCredit = parseInt(moreBtn.dataset.baseCredit);
-                    document.getElementById('stageIdInput').value = currentStageId;
-
-                    var services = stagePricingData.pricing[currentStageId] || [];
-                    document.getElementById('servicesSection').style.display = 'block';
-                    document.getElementById('originalFileNotice').style.display = 'none';
-                    renderServices(services);
+                if (selectedStages.has(stageId)) {
+                    selectedStages.delete(stageId);
+                    moreBtn.classList.remove('active');
                 } else {
-                    currentStageId = null;
-                    currentBaseCredit = 0;
-                    document.getElementById('stageIdInput').value = '';
-                    document.getElementById('servicesSection').style.display = 'none';
-                    renderServices([]);
+                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices });
+                    moreBtn.classList.add('active');
                 }
 
+                syncStageInputs();
+                renderCombinedServices();
                 updateCreditDisplay();
             });
         }
@@ -407,7 +462,7 @@ function initCreateRequest() {
             serviceTotal += parseInt(cb.dataset.cost || 0);
         });
 
-        var total = currentBaseCredit + serviceTotal;
+        var total = getTotalBaseCredit() + serviceTotal;
 
         var totalVal = document.getElementById('totalCreditValue');
         var remainEl = document.getElementById('remainingBalance');
@@ -421,7 +476,7 @@ function initCreateRequest() {
             remainEl.style.color = remaining < 0 ? '#ef4444' : '';
         }
         if (alertEl) alertEl.style.display = remaining < 0 ? 'block' : 'none';
-        if (submitBtn) submitBtn.disabled = remaining < 0 || !currentStageId;
+        if (submitBtn) submitBtn.disabled = remaining < 0 || selectedStages.size === 0;
     }
 
     function escapeHtml(text) {

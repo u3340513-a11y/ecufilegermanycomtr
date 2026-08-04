@@ -26,21 +26,53 @@ final class RequestService
 
     public function create(int $userId, array $data, array $serviceIds, int $stageId): int
     {
+        return $this->createMultiStage($userId, $data, $serviceIds, $stageId, []);
+    }
+
+    /**
+     * Çoklu stage seçimini destekleyen talep oluşturma.
+     * Birincil stage ($primaryStageId) requests.stage_id'ye yazılır.
+     * Ek stage'lerin ($extraStageIds) base_credit değerleri toplam krediye dahil edilir.
+     *
+     * @param int   $userId         Talebi oluşturan kullanıcı ID.
+     * @param array $data           Form alanları (brand_id, model_id, ...).
+     * @param array $serviceIds     Seçili servis paketi ID listesi.
+     * @param int   $primaryStageId Birincil stage ID.
+     * @param int[] $extraStageIds  Ek stage ID listesi.
+     * @return int Oluşturulan request ID.
+     * @throws \RuntimeException
+     */
+    public function createMultiStage(int $userId, array $data, array $serviceIds, int $primaryStageId, array $extraStageIds): int
+    {
         $db = Database::getInstance();
 
-        $stage = $db->fetch('SELECT * FROM stages WHERE id = ? AND is_active = 1', [$stageId]);
-        if (!$stage) {
+        // Birincil stage doğrulama
+        $primaryStage = $db->fetch('SELECT * FROM stages WHERE id = ? AND is_active = 1', [$primaryStageId]);
+        if (!$primaryStage) {
             throw new \RuntimeException('Geçersiz stage seçimi.');
         }
 
-        $baseCredit = (int) $stage['base_credit'];
+        $baseCredit = (int) $primaryStage['base_credit'];
 
+        // Ek stage'lerin base_credit'lerini topla
+        foreach ($extraStageIds as $extraId) {
+            $extraId = (int) $extraId;
+            if ($extraId <= 0) {
+                continue;
+            }
+            $extraStage = $db->fetch('SELECT base_credit FROM stages WHERE id = ? AND is_active = 1', [$extraId]);
+            if ($extraStage) {
+                $baseCredit += (int) $extraStage['base_credit'];
+            }
+        }
+
+        // Birincil stage servis fiyatlandırması
         $pricingRows = $db->fetchAll(
             'SELECT ssp.service_package_id, ssp.credit_cost, sp.name
              FROM stage_service_pricing ssp
              JOIN service_packages sp ON ssp.service_package_id = sp.id
              WHERE ssp.stage_id = ? AND ssp.is_visible = 1 AND sp.is_active = 1',
-            [$stageId]
+            [$primaryStageId]
         );
 
         $pricingMap = [];
@@ -48,10 +80,31 @@ final class RequestService
             $pricingMap[(int) $row['service_package_id']] = $row;
         }
 
+        // Ek stage'lerin servis fiyatlarını da ekle (çakışmalar için birincil stage öncelikli)
+        foreach ($extraStageIds as $extraId) {
+            $extraId = (int) $extraId;
+            if ($extraId <= 0) {
+                continue;
+            }
+            $extraRows = $db->fetchAll(
+                'SELECT ssp.service_package_id, ssp.credit_cost, sp.name
+                 FROM stage_service_pricing ssp
+                 JOIN service_packages sp ON ssp.service_package_id = sp.id
+                 WHERE ssp.stage_id = ? AND ssp.is_visible = 1 AND sp.is_active = 1',
+                [$extraId]
+            );
+            foreach ($extraRows as $row) {
+                $pid = (int) $row['service_package_id'];
+                if (!isset($pricingMap[$pid])) {
+                    $pricingMap[$pid] = $row;
+                }
+            }
+        }
+
         $selectedServices = [];
         $serviceTotalCredits = 0;
 
-        $showServices = (int) $stage['show_services'];
+        $showServices = (int) $primaryStage['show_services'];
 
         if ($showServices > 0 && !empty($serviceIds)) {
             foreach ($serviceIds as $sid) {
@@ -87,7 +140,7 @@ final class RequestService
                 'generation_id'        => $data['generation_id'] ?: null,
                 'engine_id'            => $data['engine_id'] ?: null,
                 'ecu_id'               => $data['ecu_id'] ?: null,
-                'stage_id'             => $stageId,
+                'stage_id'             => $primaryStageId,
                 'transmission_type_id' => $data['transmission_type_id'] ?: null,
                 'year'                 => $data['year'] ?: null,
                 'ecu_sw'               => $data['ecu_sw'] ?? null,

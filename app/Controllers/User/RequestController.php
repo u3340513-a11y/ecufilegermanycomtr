@@ -59,10 +59,21 @@ final class RequestController extends Controller
 
     public function store(Request $request): void
     {
-        $stageId = (int) $request->post('stage_id');
-        if (!$stageId) {
-            $this->withError('Lütfen bir işlem tipi (stage) seçin.', '/dashboard/requests/create');
+        // Çoklu stage desteği: stage_ids[] array olarak gelir
+        $stageIds = $request->post('stage_ids');
+        if (!is_array($stageIds) || empty($stageIds)) {
+            $this->withError('Lütfen en az bir işlem tipi (stage) seçin.', '/dashboard/requests/create');
         }
+
+        // Tamsayıya çevir ve geçersiz değerleri temizle
+        $stageIds = array_values(array_filter(array_map('intval', $stageIds)));
+        if (empty($stageIds)) {
+            $this->withError('Lütfen en az bir işlem tipi (stage) seçin.', '/dashboard/requests/create');
+        }
+
+        // Birincil stage: ilk seçilen (en küçük ID sıralamasıyla tutarlı)
+        $primaryStageId = $stageIds[0];
+        $extraStageIds  = array_slice($stageIds, 1);
 
         $serviceIds = $request->post('services');
         if (!is_array($serviceIds)) {
@@ -70,7 +81,7 @@ final class RequestController extends Controller
         }
 
         try {
-            $requestId = $this->service->create(
+            $requestId = $this->service->createMultiStage(
                 $this->userId(),
                 $request->only([
                     'brand_id', 'model_id', 'generation_id', 'engine_id',
@@ -78,7 +89,8 @@ final class RequestController extends Controller
                     'reading_method_id', 'plate_number', 'customer_note'
                 ]),
                 $serviceIds,
-                $stageId
+                $primaryStageId,
+                $extraStageIds
             );
 
             $uploadedFiles = \Core\Session::get('uploaded_files', []);

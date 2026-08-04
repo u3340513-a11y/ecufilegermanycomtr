@@ -2,7 +2,8 @@
 
 <form method="POST" action="/dashboard/requests/store" id="createRequestForm" enctype="multipart/form-data">
     <?= \Core\View::csrf() ?>
-    <input type="hidden" name="stage_id" id="stageIdInput" value="">
+    <!-- Çoklu stage seçimi: her seçili stage için ayrı hidden input oluşturulur JS ile -->
+    <div id="stageIdsContainer"></div>
 
     <div class="request-form-wrapper">
 
