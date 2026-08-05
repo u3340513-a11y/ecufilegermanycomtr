@@ -49,6 +49,70 @@
         <div class="card mb-4"><div class="card-header"><h6 class="mb-0">Son Talepler</h6></div><div class="card-body p-0"><div class="table-responsive"><table class="table mb-0"><thead><tr><th>No</th><th>Durum</th><th>Kredi</th><th>Tarih</th></tr></thead><tbody>
             <?php foreach ($requests as $r): ?><tr><td>#<?= \Core\View::escape($r['ticket_no']) ?></td><td><span class="badge bg-<?= ['pending'=>'warning','reviewing'=>'info','processing'=>'primary','revision'=>'secondary','completed'=>'success','cancelled'=>'danger'][$r['status']] ?? 'secondary' ?>"><?= ['pending'=>'Bekliyor','reviewing'=>'İnceleniyor','processing'=>'İşlemde','revision'=>'Revizyon','completed'=>'Tamamlandı','cancelled'=>'İptal'][$r['status']] ?? $r['status'] ?></span></td><td><?= $r['total_credits'] ?></td><td class="text-muted"><?= date('d.m.Y', strtotime($r['created_at'])) ?></td></tr><?php endforeach; ?>
         </tbody></table></div></div></div>
+
+        <!-- Kredi Geçmişi -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-coins me-2"></i>Kredi Geçmişi</h6>
+                <span class="badge bg-secondary"><?= count($transactions) ?> işlem</span>
+            </div>
+            <div class="card-body p-0">
+                <?php if (empty($transactions)): ?>
+                    <p class="text-center text-muted py-4">Henüz kredi işlemi yok.</p>
+                <?php else: ?>
+                <?php
+                $typeConfig = [
+                    'admin_add' => ['label' => 'Admin Yükleme', 'badge' => 'success',   'icon' => 'fa-plus-circle',   'sign' => '+'],
+                    'purchase'  => ['label' => 'Satın Alma',    'badge' => 'primary',   'icon' => 'fa-shopping-cart', 'sign' => '+'],
+                    'usage'     => ['label' => 'Kullanım',      'badge' => 'warning',   'icon' => 'fa-minus-circle',  'sign' => '-'],
+                    'refund'    => ['label' => 'İade',          'badge' => 'info',      'icon' => 'fa-undo',          'sign' => '+'],
+                ];
+                ?>
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tür</th>
+                                <th>Tutar</th>
+                                <th>Sonraki Bakiye</th>
+                                <th>Açıklama</th>
+                                <th>Yükleyen</th>
+                                <th>Tarih</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($transactions as $tx):
+                                $cfg = $typeConfig[$tx['type']] ?? ['label' => $tx['type'], 'badge' => 'secondary', 'icon' => 'fa-circle', 'sign' => ''];
+                            ?>
+                            <tr>
+                                <td>
+                                    <span class="badge bg-<?= $cfg['badge'] ?>">
+                                        <i class="fas <?= $cfg['icon'] ?> me-1"></i><?= $cfg['label'] ?>
+                                    </span>
+                                </td>
+                                <td class="fw-semibold <?= in_array($tx['type'], ['usage']) ? 'text-danger' : 'text-success' ?>">
+                                    <?= $cfg['sign'] ?><?= abs((int) $tx['amount']) ?> Kr
+                                </td>
+                                <td class="text-muted"><?= (int) $tx['balance_after'] ?> Kr</td>
+                                <td class="small text-muted"><?= \Core\View::escape($tx['description'] ?? '-') ?></td>
+                                <td class="small">
+                                    <?php if ($tx['admin_name']): ?>
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="fas fa-user-shield me-1"></i><?= \Core\View::escape($tx['admin_name']) ?>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-muted small"><?= date('d.m.Y H:i', strtotime($tx['created_at'])) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>
 

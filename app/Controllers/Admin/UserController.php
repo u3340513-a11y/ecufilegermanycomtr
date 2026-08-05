@@ -94,7 +94,16 @@ final class UserController extends Controller
 
         $db = \Core\Database::getInstance();
         $requests     = $db->fetchAll('SELECT * FROM requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [(int)$id]);
-        $transactions = $db->fetchAll('SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT 20', [(int)$id]);
+        $transactions = $db->fetchAll(
+            'SELECT ct.id, ct.type, ct.amount, ct.balance_after, ct.description, ct.created_at,
+                    u.name AS admin_name
+             FROM credit_transactions ct
+             LEFT JOIN users u ON u.id = ct.admin_id
+             WHERE ct.user_id = ?
+             ORDER BY ct.created_at DESC
+             LIMIT 50',
+            [(int)$id]
+        );
 
         $this->view('admin/users/show', [
             'pageTitle'    => $user['name'],
