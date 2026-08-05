@@ -146,16 +146,27 @@ $sl = ['pending'=>'Bekliyor','reviewing'=>'İnceleniyor','processing'=>'İşlemd
                     <?php foreach ($grouped as $type => $files): ?>
                         <?php if (!empty($files)): ?>
                             <h6 class="small text-uppercase text-muted mb-2 mt-3"><?= $typeLabels[$type] ?></h6>
-                            <?php foreach ($files as $f): ?>
+                            <?php foreach ($files as $f):
+                                $fullName  = $f['original_name'];
+                                $ext       = pathinfo($fullName, PATHINFO_EXTENSION);
+                                $basePart  = pathinfo($fullName, PATHINFO_FILENAME);
+                                $shortName = mb_strlen($basePart) > 22
+                                    ? mb_substr($basePart, 0, 22) . '...' . ($ext ? '.' . $ext : '')
+                                    : $fullName;
+                            ?>
                                 <div class="file-item d-flex align-items-center justify-content-between mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas <?= $typeIcons[$type] ?? 'fa-file' ?> me-2"></i>
-                                        <div>
-                                            <span class="small d-block"><?= \Core\View::escape($f['original_name']) ?></span>
+                                    <div class="d-flex align-items-center min-w-0 me-2" style="min-width:0;overflow:hidden;">
+                                        <i class="fas <?= $typeIcons[$type] ?? 'fa-file' ?> me-2 flex-shrink-0"></i>
+                                        <div style="min-width:0;overflow:hidden;">
+                                            <span class="small d-block text-truncate"
+                                                  style="max-width:160px;"
+                                                  title="<?= \Core\View::escape($fullName) ?>">
+                                                <?= \Core\View::escape($shortName) ?>
+                                            </span>
                                             <span class="small text-muted">v<?= $f['version'] ?> · <?= round($f['size'] / 1024) ?>KB</span>
                                         </div>
                                     </div>
-                                    <a href="/download/<?= $f['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                    <a href="/download/<?= $f['id'] ?>" class="btn btn-sm btn-outline-primary flex-shrink-0">
                                         <i class="fas fa-download"></i>
                                     </a>
                                 </div>

@@ -110,7 +110,26 @@
             <?php $grouped = ['original'=>[],'revision'=>[],'completed'=>[]]; foreach ($req['files'] as $f) { $grouped[$f['type']][] = $f; } $tl = ['original'=>'Orijinal','revision'=>'Revizyon','completed'=>'Tamamlanan']; ?>
             <?php foreach ($grouped as $type => $files): if (!empty($files)): ?>
                 <h6 class="small text-uppercase text-muted mb-2"><?= $tl[$type] ?></h6>
-                <?php foreach ($files as $f): ?><div class="d-flex justify-content-between align-items-center mb-2"><div><small><?= \Core\View::escape($f['original_name']) ?></small><br><small class="text-muted">v<?= $f['version'] ?></small></div><a href="/download/<?= $f['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="fas fa-download"></i></a></div><?php endforeach; ?>
+                <?php foreach ($files as $f):
+                    $fullName  = $f['original_name'];
+                    $ext       = pathinfo($fullName, PATHINFO_EXTENSION);
+                    $basePart  = pathinfo($fullName, PATHINFO_FILENAME);
+                    $shortName = mb_strlen($basePart) > 22
+                        ? mb_substr($basePart, 0, 22) . '...' . ($ext ? '.' . $ext : '')
+                        : $fullName;
+                ?>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="min-w-0 me-2" style="min-width:0;overflow:hidden;">
+                        <small class="d-block text-truncate" style="max-width:180px;" title="<?= \Core\View::escape($fullName) ?>">
+                            <?= \Core\View::escape($shortName) ?>
+                        </small>
+                        <small class="text-muted">v<?= $f['version'] ?></small>
+                    </div>
+                    <a href="/download/<?= $f['id'] ?>" class="btn btn-sm btn-outline-primary flex-shrink-0">
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>
+                <?php endforeach; ?>
             <?php endif; endforeach; ?>
         </div></div>
     </div>
