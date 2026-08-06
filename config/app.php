@@ -16,14 +16,11 @@ return [
 
     'upload' => [
         'max_size'      => 20971520,
-        'allowed_types' => ['bin', 'ori', 'mod', 'zip', '7z', 'pdf', 'jpg', 'jpeg', 'png'],
+        'allowed_types' => ['rar'],
         'allowed_mimes' => [
+            'application/x-rar-compressed',
+            'application/vnd.rar',
             'application/octet-stream',
-            'application/zip',
-            'application/x-7z-compressed',
-            'application/pdf',
-            'image/jpeg',
-            'image/png',
         ],
     ],
 

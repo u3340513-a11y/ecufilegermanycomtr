@@ -530,29 +530,27 @@ function initCreateRequest() {
                 url: '/api/files/upload',
                 maxFilesize: 20,
                 maxFiles: 5,
-                acceptedFiles: '.bin,.ori,.mod,.zip,.7z',
+                acceptedFiles: '.rar',
                 addRemoveLinks: true,
                 dictRemoveFile: 'Kaldır',
                 dictCancelUpload: 'İptal',
                 dictMaxFilesExceeded: 'Maksimum dosya sayısına ulaşıldı.',
-                dictInvalidFileType: 'Bu dosya türü desteklenmiyor. Desteklenen türler: .bin, .ori, .mod, .zip, .7z',
+                dictInvalidFileType: 'Sadece .rar dosyası yüklenebilir.',
                 dictFileTooBig: 'Dosya çok büyük ({{filesize}} MB). Maksimum izin verilen: {{maxFilesize}} MB.',
                 init: function() {
                     this.on('error', function(file, errorMessage) {
-                        // Dropzone'un kendi hatasını gösterdikten sonra Swal ile de bildir
                         var msg = typeof errorMessage === 'string'
                             ? errorMessage
-                            : 'Dosya yüklenemedi. Lütfen geçerli bir dosya seçin.';
+                            : 'Dosya yüklenemedi. Lütfen geçerli bir .rar dosyası seçin.';
 
                         Swal.fire({
                             icon: 'error',
-                            title: 'Dosya Reddedildi',
+                            title: 'Geçersiz Dosya Türü',
                             text: msg,
                             confirmButtonText: 'Tamam',
                             confirmButtonColor: '#0ea5e9',
                         });
 
-                        // Reddedilen dosyayı listeden kaldır
                         this.removeFile(file);
                     });
 
