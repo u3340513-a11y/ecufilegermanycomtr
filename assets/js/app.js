@@ -442,6 +442,7 @@ function initCreateRequest() {
                 syncStageInputs();
                 renderCombinedServices();
                 updateCreditDisplay();
+                updateDropzoneState();
             });
         });
 
@@ -467,6 +468,7 @@ function initCreateRequest() {
                 syncStageInputs();
                 renderCombinedServices();
                 updateCreditDisplay();
+                updateDropzoneState();
             });
         }
     }
@@ -489,8 +491,46 @@ function initCreateRequest() {
         });
 
         grid.querySelectorAll('.service-radio').forEach(function(cb) {
-            cb.addEventListener('change', updateCreditDisplay);
+            cb.addEventListener('change', function() {
+                updateCreditDisplay();
+                updateDropzoneState();
+            });
         });
+
+        // After rendering new services, re-check dropzone state
+        updateDropzoneState();
+    }
+
+    /**
+     * Enables or disables the Dropzone upload area based on service selection.
+     * Upload is only allowed when at least one service checkbox is checked
+     * OR when a stage without services (e.g. original-file) is the only selection.
+     */
+    function updateDropzoneState() {
+        var dropzoneEl  = document.getElementById('fileDropzone');
+        var dropzoneHint = document.getElementById('dropzoneHint');
+        if (!dropzoneEl) return;
+
+        // Check if any service is checked
+        var checkedServices = document.querySelectorAll('.service-radio:checked').length;
+
+        // Check if a stage without service grid is selected (e.g. original-file only)
+        var hasServicesStage = false;
+        selectedStages.forEach(function(info) {
+            if (info.showServices === 1) hasServicesStage = true;
+        });
+
+        // Allowed: has a service checked, OR has a non-service stage selected with no service grid
+        var allowed = checkedServices > 0 || (selectedStages.size > 0 && !hasServicesStage);
+
+        dropzoneEl.classList.toggle('dropzone-locked', !allowed);
+        dropzoneEl.style.pointerEvents = allowed ? '' : 'none';
+        dropzoneEl.style.opacity       = allowed ? '' : '0.45';
+        dropzoneEl.title               = allowed ? '' : 'Lütfen önce yapılacak işlemleri seçin.';
+
+        if (dropzoneHint) {
+            dropzoneHint.style.display = allowed ? 'none' : 'block';
+        }
     }
 
     function updateCreditDisplay() {

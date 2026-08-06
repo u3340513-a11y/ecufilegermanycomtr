@@ -153,4 +153,38 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->count('users', 'email_verified = 0 AND role = ?', ['user']);
     }
+
+    /**
+     * Returns all users who have an outstanding debt balance (debt_balance > 0).
+     * Used by the Saturday debt reminder warning in the admin dashboard.
+     */
+    public function getUsersWithDebt(): array
+    {
+        return $this->db->fetchAll(
+            'SELECT id, name, email, company, credit_balance, debt_balance
+             FROM users
+             WHERE debt_balance > 0 AND role = ?
+             ORDER BY debt_balance DESC',
+            ['user']
+        );
+    }
+
+    /**
+     * Adjusts the debt_balance of a user by a given amount (positive = add debt, negative = reduce debt).
+     * Ensures the balance never goes below zero.
+     *
+     * @param int $id     User ID
+     * @param int $amount Signed integer to add (can be negative)
+     * @return int New debt balance
+     */
+    public function updateDebtBalance(int $id, int $amount): int
+    {
+        $this->db->query(
+            'UPDATE users SET debt_balance = GREATEST(0, debt_balance + ?) WHERE id = ?',
+            [$amount, $id]
+        );
+
+        $user = $this->findById($id);
+        return $user ? (int) $user['debt_balance'] : 0;
+    }
 }

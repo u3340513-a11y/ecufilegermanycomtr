@@ -1,5 +1,39 @@
 <?php $pageTitle = 'Yönetim Paneli'; $currentPage = 'admin-dashboard'; ?>
 
+<?php if (!empty($debtWarning)): ?>
+<div class="alert alert-danger d-flex align-items-start gap-3 mb-4 shadow-sm border-0" role="alert" style="border-left:4px solid #dc3545 !important;">
+    <i class="fas fa-exclamation-triangle fa-lg mt-1 flex-shrink-0 text-danger"></i>
+    <div class="flex-grow-1">
+        <strong class="d-block mb-1">⚠️ Cumartesi Borç Hatırlatması</strong>
+        <p class="mb-2 text-danger-emphasis">Aşağıdaki kullanıcıların borç bakiyesi bulunmaktadır. Lütfen kontrol edin:</p>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0 bg-white">
+                <thead class="table-danger">
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>E-posta</th>
+                        <th>Borç</th>
+                        <th>Kredi Bakiyesi</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($usersWithDebt as $du): ?>
+                    <tr>
+                        <td><strong><?= \Core\View::escape($du['name']) ?></strong></td>
+                        <td class="text-muted"><?= \Core\View::escape($du['email']) ?></td>
+                        <td class="text-danger fw-bold"><?= (int)$du['debt_balance'] ?> Kr</td>
+                        <td><?= (int)$du['credit_balance'] ?> Kr</td>
+                        <td><a href="/admin/users/<?= $du['id'] ?>" class="btn btn-sm btn-outline-danger">Görüntüle</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="row g-4 mb-4">
     <div class="col-md-6 col-xl-2">
         <div class="stat-card stat-card--primary"><div class="stat-card__icon"><i class="fas fa-users"></i></div><div class="stat-card__info"><span class="stat-card__value"><?= $stats['total_users'] ?></span><span class="stat-card__label">Kullanıcı</span></div></div>

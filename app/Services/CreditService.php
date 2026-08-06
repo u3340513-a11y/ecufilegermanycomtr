@@ -82,4 +82,28 @@ final class CreditService
     {
         return $this->creditRepo->getByUser($userId, $page);
     }
+
+    /**
+     * Gives credits to a user as debt.
+     * Increases credit_balance (so user can use them) and increases debt_balance (for tracking).
+     * Every Saturday the admin is warned about users with outstanding debt.
+     *
+     * @param int    $userId      Target user ID
+     * @param int    $amount      Credits to give as debt (positive integer)
+     * @param string $description Transaction description
+     * @param int    $adminId     Admin user ID performing the action
+     * @return array{credit_balance: int, debt_balance: int} New balances
+     */
+    public function addDebt(int $userId, int $amount, string $description, int $adminId): array
+    {
+        $creditBalance = $this->userRepo->updateCreditBalance($userId, $amount);
+        $this->creditRepo->addTransaction($userId, 'debt', $amount, $creditBalance, $description, null, $adminId);
+
+        $debtBalance = $this->userRepo->updateDebtBalance($userId, $amount);
+
+        return [
+            'credit_balance' => $creditBalance,
+            'debt_balance'   => $debtBalance,
+        ];
+    }
 }

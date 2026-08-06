@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use Core\Controller;
 use Core\Request;
 use Core\Database;
+use App\Repositories\UserRepository;
 
 final class DashboardController extends Controller
 {
@@ -34,12 +35,20 @@ final class DashboardController extends Controller
 
         $recentUsers = $db->fetchAll('SELECT id, name, email, created_at FROM users WHERE role = "user" ORDER BY created_at DESC LIMIT 5');
 
+        // Saturday debt reminder: warn admin if today is Saturday and there are users with debt
+        $isSaturday    = (int) date('N') === 6; // ISO-8601: 6 = Saturday
+        $userRepo      = new UserRepository();
+        $usersWithDebt = $isSaturday ? $userRepo->getUsersWithDebt() : [];
+        $debtWarning   = $isSaturday && !empty($usersWithDebt);
+
         $this->view('admin/dashboard', [
             'pageTitle'      => 'Yönetim Paneli',
             'currentPage'    => 'admin-dashboard',
             'stats'          => $stats,
             'recentRequests' => $recentRequests,
             'recentUsers'    => $recentUsers,
+            'debtWarning'    => $debtWarning,
+            'usersWithDebt'  => $usersWithDebt,
         ], 'admin');
     }
 }

@@ -2,7 +2,7 @@
 <div class="row g-4 mb-4">
 
     <!-- Kredi Ekle -->
-    <div class="col-lg-6">
+    <div class="col-lg-4">
         <div class="card h-100">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-success"></i>Kredi Ekle</h6>
@@ -33,7 +33,7 @@
     </div>
 
     <!-- Kredi Düş -->
-    <div class="col-lg-6">
+    <div class="col-lg-4">
         <div class="card h-100">
             <div class="card-header">
                 <h6 class="mb-0"><i class="fas fa-minus-circle me-2 text-danger"></i>Kredi Düş</h6>
@@ -63,6 +63,38 @@
         </div>
     </div>
 
+    <!-- Borç Olarak Kredi Ver -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-hand-holding-usd me-2 text-warning"></i>Borç Olarak Kredi Ver</h6>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">Kullanıcı krediyi hemen kullanabilir. Borç bakiyesi Cumartesi günleri yönetim panelinde uyarı olarak gösterilir.</p>
+                <form method="POST" action="/admin/credits/debt"><?= \Core\View::csrf() ?>
+                    <div class="mb-3">
+                        <label class="form-label">Kullanıcı</label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">Seçiniz</option>
+                            <?php foreach ($users as $u): ?>
+                                <option value="<?= $u['id'] ?>"><?= \Core\View::escape($u['name']) ?> (<?= \Core\View::escape($u['email']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Borç Kredi Miktarı</label>
+                        <input type="number" name="amount" class="form-control" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama</label>
+                        <input type="text" name="description" class="form-control" value="Borç olarak verildi">
+                    </div>
+                    <button class="btn btn-warning w-100 text-dark"><i class="fas fa-hand-holding-usd me-1"></i>Borç Ver</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Son İşlemler Tablosu -->
@@ -83,8 +115,8 @@
                 </thead>
                 <tbody>
                     <?php
-                    $typeLabels  = ['purchase' => 'Satın Alma', 'usage' => 'Kullanım', 'refund' => 'İade', 'admin_add' => 'Admin Ekleme', 'admin_deduct' => 'Admin Düşme'];
-                    $typeClasses = ['purchase' => 'success', 'usage' => 'danger', 'refund' => 'info', 'admin_add' => 'success', 'admin_deduct' => 'warning'];
+                    $typeLabels  = ['purchase' => 'Satın Alma', 'usage' => 'Kullanım', 'refund' => 'İade', 'admin_add' => 'Admin Ekleme', 'admin_deduct' => 'Admin Düşme', 'debt' => 'Borç'];
+                    $typeClasses = ['purchase' => 'success', 'usage' => 'danger', 'refund' => 'info', 'admin_add' => 'success', 'admin_deduct' => 'warning', 'debt' => 'warning'];
                     foreach ($transactions as $t):
                     ?>
                     <tr>

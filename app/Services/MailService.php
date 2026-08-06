@@ -115,6 +115,7 @@ final class MailService
             'purchase'     => 'Satın Alma',
             'admin_add'    => 'Admin Tarafından Ekleme',
             'admin_deduct' => 'Admin Tarafından Düşme',
+            'debt'         => 'Borç Olarak Ekleme',
             'refund'       => 'İade',
             default        => $type,
         };

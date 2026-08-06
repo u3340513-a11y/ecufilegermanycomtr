@@ -120,4 +120,39 @@ final class CreditController extends Controller
 
         $this->withSuccess("{$amount} kredi iade edildi.", '/admin/credits');
     }
+
+    /**
+     * Gives credits to a user as debt (borç).
+     * The user can use the credits immediately; debt_balance tracks the owed amount.
+     * Admin is warned every Saturday about users with outstanding debt.
+     */
+    public function addDebtCredit(Request $request): void
+    {
+        $userId      = (int) $request->post('user_id');
+        $amount      = (int) $request->post('amount');
+        $description = trim((string) $request->post('description', '')) ?: 'Borç olarak verildi';
+
+        if ($userId <= 0 || $amount <= 0) {
+            $this->withError('Geçersiz parametreler.', '/admin/credits');
+        }
+
+        $userRepo = new UserRepository();
+        $user     = $userRepo->findById($userId);
+        if (!$user) {
+            $this->withError('Kullanıcı bulunamadı.', '/admin/credits');
+        }
+
+        $balances = $this->creditService->addDebt($userId, $amount, $description, $this->userId());
+
+        $notifService = new NotificationService();
+        $notifService->notifyCreditAdded($userId, $amount);
+
+        $mailService = new MailService();
+        $mailService->sendCreditNotification($user['email'], $user['name'], $amount, 'debt');
+
+        $this->withSuccess(
+            "{$amount} kredi borç olarak eklendi. Kredi bakiyesi: {$balances['credit_balance']}, Borç bakiyesi: {$balances['debt_balance']}",
+            '/admin/credits'
+        );
+    }
 }

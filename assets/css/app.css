@@ -556,6 +556,23 @@ body { font-family: var(--font); font-size: .875rem; color: var(--gray-800); bac
 }
 .upload-section-header i, .notes-section-header i { color: #0ea5e9; font-size: .82rem; }
 
+/* --- Dropzone Upload Lock --- */
+.dropzone-hint-locked {
+    color: #f59e0b;
+    font-size: .78rem;
+    padding: .5rem .8rem;
+    background: rgba(245, 158, 11, .08);
+    border: 1px solid rgba(245, 158, 11, .25);
+    border-radius: 8px;
+    margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.dropzone-locked {
+    cursor: not-allowed !important;
+}
+
 .dropzone-dark {
     background: rgba(14,165,233,.03) !important;
     border: 2px dashed rgba(14,165,233,.18) !important;
