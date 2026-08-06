@@ -456,6 +456,39 @@ body { font-family: var(--font); font-size: .875rem; color: var(--gray-800); bac
     box-shadow: 0 0 12px rgba(14,165,233,.15);
 }
 
+/* --- Selected Stage Summary --- */
+#selectedStageSummary {
+    margin-bottom: .65rem;
+    margin-top: 1.25rem;
+}
+.selected-stage-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+}
+.selected-stage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .38rem .75rem;
+    border-radius: 20px;
+    font-size: .73rem;
+    font-weight: 700;
+    background: rgba(16, 185, 129, .13);
+    border: 1px solid rgba(16, 185, 129, .35);
+    color: #34d399;
+    letter-spacing: .02em;
+}
+.selected-stage-badge i {
+    font-size: .72rem;
+    color: #10b981;
+}
+.selected-stage-badge-credit {
+    font-weight: 600;
+    opacity: .8;
+    font-size: .68rem;
+}
+
 /* --- Services --- */
 .services-section-title {
     color: #475569;

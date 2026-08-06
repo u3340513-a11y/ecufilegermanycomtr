@@ -109,18 +109,23 @@ final class MailService
 
     public function sendCreditNotification(string $email, string $name, int $amount, string $type): bool
     {
+        $isDeduction = in_array($type, ['admin_deduct', 'usage'], true);
+
         $typeLabel = match ($type) {
-            'purchase'  => 'Satın Alma',
-            'admin_add' => 'Admin Tarafından Ekleme',
-            'refund'    => 'İade',
-            default     => $type,
+            'purchase'     => 'Satın Alma',
+            'admin_add'    => 'Admin Tarafından Ekleme',
+            'admin_deduct' => 'Admin Tarafından Düşme',
+            'refund'       => 'İade',
+            default        => $type,
         };
+
+        $action = $isDeduction ? 'düşüldü' : 'eklendi';
 
         $body = "
             <p>Merhaba <strong>{$name}</strong>,</p>
-            <p>Hesabınıza <strong>{$amount} kredi</strong> ({$typeLabel}) eklendi.</p>
+            <p>Hesabınızdan <strong>{$amount} kredi</strong> ({$typeLabel}) {$action}.</p>
             <p style='text-align:center;margin:20px 0;'>
-                <a href='" . App::url('dashboard/credits') . "' style='color:#2563eb;'>Kredi Geçmişinizi Görüntüleyin</a>
+                <a href='" . \Core\App::url('dashboard/credits') . "' style='color:#2563eb;'>Kredi Geçmişinizi Görüntüleyin</a>
             </p>
         ";
 

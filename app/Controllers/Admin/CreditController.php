@@ -68,6 +68,46 @@ final class CreditController extends Controller
         $this->withSuccess("{$amount} kredi eklendi. Yeni bakiye: {$newBalance}", '/admin/credits');
     }
 
+    /**
+     * Admin tarafından kullanıcı bakiyesinden kredi düşer.
+     * Bakiye yetersizse hata döner; başarılıysa bildirim ve mail gönderilir.
+     */
+    public function deductCredit(Request $request): void
+    {
+        $userId      = (int) $request->post('user_id');
+        $amount      = (int) $request->post('amount');
+        $description = trim((string) $request->post('description', '')) ?: 'Admin tarafından düşüldü';
+
+        if ($userId <= 0 || $amount <= 0) {
+            $this->withError('Geçersiz parametreler.', '/admin/credits');
+        }
+
+        $userRepo = new UserRepository();
+        $user     = $userRepo->findById($userId);
+
+        if (!$user) {
+            $this->withError('Kullanıcı bulunamadı.', '/admin/credits');
+        }
+
+        $currentBalance = (int) $user['credit_balance'];
+        if ($currentBalance < $amount) {
+            $this->withError(
+                "Yetersiz bakiye. Kullanıcının mevcut bakiyesi: {$currentBalance} kredi.",
+                '/admin/credits'
+            );
+        }
+
+        $newBalance = $this->creditService->deductByAdmin($userId, $amount, $description, $this->userId());
+
+        $notifService = new NotificationService();
+        $notifService->notifyCreditDeducted($userId, $amount);
+
+        $mailService = new MailService();
+        $mailService->sendCreditNotification($user['email'], $user['name'], $amount, 'admin_deduct');
+
+        $this->withSuccess("{$amount} kredi düşüldü. Yeni bakiye: {$newBalance}", '/admin/credits');
+    }
+
     public function refund(Request $request, string $id): void
     {
         $tx = \Core\Database::getInstance()->fetch('SELECT * FROM credit_transactions WHERE id = ?', [(int)$id]);

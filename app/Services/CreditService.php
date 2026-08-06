@@ -31,6 +31,25 @@ final class CreditService
         return true;
     }
 
+    /**
+     * Admin tarafından kullanıcıdan kredi düşer.
+     * Bakiye kontrolü controller katmanında yapılmış olmalıdır.
+     * İşlemi admin_deduct tipiyle kaydeder ve admin_id'yi loglar.
+     *
+     * @param int    $userId      Hedef kullanıcı ID'si
+     * @param int    $amount      Düşülecek pozitif kredi miktarı
+     * @param string $description İşlem açıklaması
+     * @param int    $adminId     İşlemi yapan admin ID'si
+     * @return int Yeni bakiye
+     */
+    public function deductByAdmin(int $userId, int $amount, string $description, int $adminId): int
+    {
+        $newBalance = $this->userRepo->updateCreditBalance($userId, -$amount);
+        $this->creditRepo->addTransaction($userId, 'admin_deduct', -$amount, $newBalance, $description, null, $adminId);
+
+        return $newBalance;
+    }
+
     public function add(int $userId, int $amount, string $type = 'admin_add', string $description = 'Kredi eklendi', ?int $adminId = null): int
     {
         $newBalance = $this->userRepo->updateCreditBalance($userId, $amount);

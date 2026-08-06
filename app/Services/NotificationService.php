@@ -97,6 +97,17 @@ final class NotificationService
         );
     }
 
+    public function notifyCreditDeducted(int $userId, int $amount): void
+    {
+        $this->create(
+            $userId,
+            'Kredi Düşüldü',
+            "Hesabınızdan {$amount} kredi düşüldü.",
+            'credit',
+            '/dashboard/credits'
+        );
+    }
+
     public function notifyPaymentApproved(int $userId, int $amount): void
     {
         $this->create(

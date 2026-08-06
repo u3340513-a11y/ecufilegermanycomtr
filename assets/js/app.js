@@ -341,6 +341,34 @@ function initCreateRequest() {
     }
 
     /**
+     * Seçili stage'leri servicesSection başlığında badge olarak gösterir.
+     * Kullanıcı hangi ana işlemi seçtiğini açıkça görebilir.
+     */
+    function renderSelectedStageSummary() {
+        var summaryEl = document.getElementById('selectedStageSummary');
+        if (!summaryEl) return;
+
+        if (selectedStages.size === 0) {
+            summaryEl.style.display = 'none';
+            summaryEl.innerHTML = '';
+            return;
+        }
+
+        var html = '<div class="selected-stage-badges">';
+        selectedStages.forEach(function(info) {
+            html += '<span class="selected-stage-badge">' +
+                '<i class="fas fa-check-circle"></i> ' +
+                escapeHtml(info.name) +
+                ' <span class="selected-stage-badge-credit">(' + info.baseCredit + ' Kredi)</span>' +
+                '</span>';
+        });
+        html += '</div>';
+
+        summaryEl.innerHTML = html;
+        summaryEl.style.display = 'block';
+    }
+
+    /**
      * Servis grid'ini günceller: seçili tüm stage'lerin servislerini birleştirir.
      */
     function renderCombinedServices() {
@@ -363,6 +391,8 @@ function initCreateRequest() {
                 });
             }
         });
+
+        renderSelectedStageSummary();
 
         if (selectedStages.size === 0) {
             servicesSection.style.display  = 'none';
@@ -392,17 +422,20 @@ function initCreateRequest() {
 
         stageBtns.forEach(function(btn) {
             btn.addEventListener('click', function() {
-                var stageId     = parseInt(btn.dataset.stageId);
-                var baseCredit  = parseInt(btn.dataset.baseCredit);
+                var stageId      = parseInt(btn.dataset.stageId);
+                var baseCredit   = parseInt(btn.dataset.baseCredit);
                 var showServices = parseInt(btn.dataset.showServices);
-                var slug        = btn.dataset.slug;
+                var slug         = btn.dataset.slug;
+                var name         = btn.querySelector('.stage-btn-name')
+                                    ? btn.querySelector('.stage-btn-name').textContent.trim()
+                                    : slug;
 
                 // Toggle: seçiliyse kaldır, değilse ekle
                 if (selectedStages.has(stageId)) {
                     selectedStages.delete(stageId);
                     btn.classList.remove('active');
                 } else {
-                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices });
+                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices, name: name });
                     btn.classList.add('active');
                 }
 
@@ -414,16 +447,20 @@ function initCreateRequest() {
 
         if (moreBtn) {
             moreBtn.addEventListener('click', function() {
-                var stageId    = parseInt(moreBtn.dataset.stageId);
-                var baseCredit = parseInt(moreBtn.dataset.baseCredit);
-                var slug       = moreBtn.dataset.slug;
+                var stageId      = parseInt(moreBtn.dataset.stageId);
+                var baseCredit   = parseInt(moreBtn.dataset.baseCredit);
+                var slug         = moreBtn.dataset.slug;
                 var showServices = parseInt(moreBtn.dataset.showServices);
+                var name         = Array.from(moreBtn.childNodes)
+                                    .filter(function(n) { return n.nodeType === Node.TEXT_NODE; })
+                                    .map(function(n) { return n.textContent.trim(); })
+                                    .filter(Boolean).join(' ') || slug;
 
                 if (selectedStages.has(stageId)) {
                     selectedStages.delete(stageId);
                     moreBtn.classList.remove('active');
                 } else {
-                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices });
+                    selectedStages.set(stageId, { baseCredit: baseCredit, slug: slug, showServices: showServices, name: name });
                     moreBtn.classList.add('active');
                 }
 
@@ -491,19 +528,40 @@ function initCreateRequest() {
         if (dz) {
             new Dropzone('#fileDropzone', {
                 url: '/api/files/upload',
-                maxFilesize: 10,
+                maxFilesize: 20,
                 maxFiles: 5,
-                acceptedFiles: '.bin,.ori,.mod,.zip,.rar,.7z',
+                acceptedFiles: '.bin,.ori,.mod,.zip,.7z',
                 addRemoveLinks: true,
                 dictRemoveFile: 'Kaldır',
                 dictCancelUpload: 'İptal',
                 dictMaxFilesExceeded: 'Maksimum dosya sayısına ulaşıldı.',
+                dictInvalidFileType: 'Bu dosya türü desteklenmiyor. Desteklenen türler: .bin, .ori, .mod, .zip, .7z',
+                dictFileTooBig: 'Dosya çok büyük ({{filesize}} MB). Maksimum izin verilen: {{maxFilesize}} MB.',
                 init: function() {
+                    this.on('error', function(file, errorMessage) {
+                        // Dropzone'un kendi hatasını gösterdikten sonra Swal ile de bildir
+                        var msg = typeof errorMessage === 'string'
+                            ? errorMessage
+                            : 'Dosya yüklenemedi. Lütfen geçerli bir dosya seçin.';
+
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Dosya Reddedildi',
+                            text: msg,
+                            confirmButtonText: 'Tamam',
+                            confirmButtonColor: '#0ea5e9',
+                        });
+
+                        // Reddedilen dosyayı listeden kaldır
+                        this.removeFile(file);
+                    });
+
                     this.on('success', function(file, response) {
                         if (response.success) {
                             file.serverFilename = response.filename;
                         }
                     });
+
                     this.on('removedfile', function(file) {
                         if (file.serverFilename) {
                             fetch('/api/files/delete', {

@@ -85,6 +85,7 @@ $router->group('admin', [AuthMiddleware::class, AdminMiddleware::class], functio
 
     $router->get('/credits', 'App\Controllers\Admin\CreditController@index');
     $router->post('/credits/add', 'App\Controllers\Admin\CreditController@addCredit');
+    $router->post('/credits/deduct', 'App\Controllers\Admin\CreditController@deductCredit');
     $router->post('/credits/refund/{id}', 'App\Controllers\Admin\CreditController@refund');
 
     $router->get('/vehicles/brands', 'App\Controllers\Admin\VehicleController@brands');

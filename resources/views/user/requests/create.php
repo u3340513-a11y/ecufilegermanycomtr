@@ -155,7 +155,9 @@
 
             <!-- ═══ Services Grid (hidden by default) ═══ -->
             <div id="servicesSection" style="display:none;">
-                <h6 class="services-section-title">Yapılacak İşlemler:</h6>
+                <!-- Seçili stage'lerin özet gösterimi -->
+                <div id="selectedStageSummary" style="display:none;"></div>
+                <h6 class="services-section-title">Ek İşlemler (İsteğe Bağlı):</h6>
                 <div class="services-grid" id="servicesGrid"></div>
             </div>
 
