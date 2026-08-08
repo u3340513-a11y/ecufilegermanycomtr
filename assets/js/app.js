@@ -420,6 +420,56 @@ function initCreateRequest() {
         var stageBtns = document.querySelectorAll('.stage-btn');
         var moreBtn   = document.getElementById('moreOptionsBtn');
 
+        /**
+         * Tüm stage butonlarının disabled/enabled durumunu günceller.
+         *
+         * Kural 1: "only-options" seçiliyse → diğer tüm butonlar disabled.
+         * Kural 2: Başka herhangi bir stage seçiliyse → "only-options" butonu disabled.
+         * Kural 3: Stage 1, 2, 3 birlikte seçilebilir.
+         */
+        function updateStageButtonStates() {
+            var onlyOptionsSelected = false;
+            var otherStageSelected  = false;
+
+            selectedStages.forEach(function(info) {
+                if (info.slug === 'only-options') {
+                    onlyOptionsSelected = true;
+                } else {
+                    otherStageSelected = true;
+                }
+            });
+
+            // Her butonu kontrol et
+            stageBtns.forEach(function(b) {
+                var bSlug = b.dataset.slug;
+                if (onlyOptionsSelected && bSlug !== 'only-options') {
+                    b.disabled = true;
+                    b.classList.add('stage-btn-disabled');
+                } else if (otherStageSelected && bSlug === 'only-options') {
+                    b.disabled = true;
+                    b.classList.add('stage-btn-disabled');
+                } else {
+                    b.disabled = false;
+                    b.classList.remove('stage-btn-disabled');
+                }
+            });
+
+            // moreOptionsBtn (more-options slug) için aynı kural
+            if (moreBtn) {
+                var moreBtnSlug = moreBtn.dataset.slug || '';
+                if (onlyOptionsSelected && moreBtnSlug !== 'only-options') {
+                    moreBtn.disabled = true;
+                    moreBtn.classList.add('stage-btn-disabled');
+                } else if (otherStageSelected && moreBtnSlug === 'only-options') {
+                    moreBtn.disabled = true;
+                    moreBtn.classList.add('stage-btn-disabled');
+                } else {
+                    moreBtn.disabled = false;
+                    moreBtn.classList.remove('stage-btn-disabled');
+                }
+            }
+        }
+
         stageBtns.forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var stageId      = parseInt(btn.dataset.stageId);
@@ -439,6 +489,7 @@ function initCreateRequest() {
                     btn.classList.add('active');
                 }
 
+                updateStageButtonStates();
                 syncStageInputs();
                 renderCombinedServices();
                 updateCreditDisplay();
@@ -465,6 +516,7 @@ function initCreateRequest() {
                     moreBtn.classList.add('active');
                 }
 
+                updateStageButtonStates();
                 syncStageInputs();
                 renderCombinedServices();
                 updateCreditDisplay();
@@ -502,31 +554,22 @@ function initCreateRequest() {
     }
 
     /**
-     * Enables or disables the Dropzone upload area based on service selection.
-     * Upload is only allowed when at least one service checkbox is checked
-     * OR when a stage without services (e.g. original-file) is the only selection.
+     * Enables or disables the Dropzone upload area based on stage selection.
+     * Upload unlocks as soon as ANY stage is selected — service checkbox selection
+     * is optional and does not gate the upload area.
      */
     function updateDropzoneState() {
-        var dropzoneEl  = document.getElementById('fileDropzone');
+        var dropzoneEl   = document.getElementById('fileDropzone');
         var dropzoneHint = document.getElementById('dropzoneHint');
         if (!dropzoneEl) return;
 
-        // Check if any service is checked
-        var checkedServices = document.querySelectorAll('.service-radio:checked').length;
-
-        // Check if a stage without service grid is selected (e.g. original-file only)
-        var hasServicesStage = false;
-        selectedStages.forEach(function(info) {
-            if (info.showServices === 1) hasServicesStage = true;
-        });
-
-        // Allowed: has a service checked, OR has a non-service stage selected with no service grid
-        var allowed = checkedServices > 0 || (selectedStages.size > 0 && !hasServicesStage);
+        // Any stage selected → unlock
+        var allowed = selectedStages.size > 0;
 
         dropzoneEl.classList.toggle('dropzone-locked', !allowed);
         dropzoneEl.style.pointerEvents = allowed ? '' : 'none';
         dropzoneEl.style.opacity       = allowed ? '' : '0.45';
-        dropzoneEl.title               = allowed ? '' : 'Lütfen önce yapılacak işlemleri seçin.';
+        dropzoneEl.title               = allowed ? '' : 'Lütfen önce servis türünü seçin.';
 
         if (dropzoneHint) {
             dropzoneHint.style.display = allowed ? 'none' : 'block';

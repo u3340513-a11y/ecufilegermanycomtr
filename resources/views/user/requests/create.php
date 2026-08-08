@@ -174,7 +174,7 @@
                 </div>
                 <p id="dropzoneHint" class="dropzone-hint-locked" style="display:none;">
                     <i class="fas fa-lock me-1"></i>
-                    Dosya yükleyebilmek için lütfen önce yapılacak işlemleri seçin (DPF OFF, EGR OFF vb.).
+                    Dosya yükleyebilmek için lütfen önce servis türünü seçin (Stage 1, Only Options vb.).
                 </p>
                 <div id="fileDropzone" class="dropzone dropzone-dark" style="pointer-events:none;opacity:0.45;" title="Lütfen önce yapılacak işlemleri seçin.">
                     <div class="dz-message">
